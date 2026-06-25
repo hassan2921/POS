@@ -4,7 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 
+import '../../../../core/utils/app_localizations.dart';
 import '../../../shop/presentation/bloc/shop_bloc.dart';
+import '../../../product/presentation/bloc/product_bloc.dart';
+import '../../../dashboard/presentation/bloc/dashboard_bloc.dart';
 import '../bloc/billing_bloc.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -30,8 +33,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Review Order',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          title: Text(context.tr('review_order'),
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -57,14 +61,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
             if (state.orderConfirmed &&
                 !state.isPrinting &&
                 !state.printSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Order confirmed! Stock updated.'),
+              context.read<ProductBloc>().add(LoadProducts());
+              context.read<DashboardBloc>().add(LoadDashboardEvent());
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(context.tr('order_confirmed_stock')),
                 backgroundColor: Colors.green,
               ));
             }
             if (state.printSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Printed successfully!'),
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(context.tr('printed_successfully')),
                 backgroundColor: Colors.green,
               ));
               context.read<BillingBloc>().add(ClearCartEvent());
@@ -91,6 +97,44 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             horizontal: 16, vertical: 16),
                         child: Column(
                           children: [
+                            // Stock warning banner
+                            Builder(builder: (context) {
+                              final lowStockItems = billingState.cartItems
+                                  .where((item) =>
+                                      item.product.stock > 0 &&
+                                      (item.product.stock - item.quantity) <= 5)
+                                  .toList();
+                              if (lowStockItems.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              return Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.amber[200]!),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded,
+                                        color: Colors.amber[700], size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '${lowStockItems.length} item${lowStockItems.length > 1 ? 's have' : ' has'} low stock remaining',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.amber[900],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
                             Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -122,11 +166,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       ),
                                       children: [
                                         _buildHeaderCell(
-                                            'Product Name', TextAlign.left),
-                                        _buildHeaderCell(
-                                            'Price', TextAlign.right),
-                                        _buildHeaderCell(
-                                            'Total', TextAlign.right),
+                                            context.tr('product_name'),
+                                            TextAlign.left),
+                                        _buildHeaderCell(context.tr('price'),
+                                            TextAlign.right),
+                                        _buildHeaderCell(context.tr('total'),
+                                            TextAlign.right),
                                       ],
                                     ),
                                     ...billingState.cartItems.map((item) {
@@ -184,9 +229,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 upiId.isNotEmpty
                                     ? Column(
                                         children: [
-                                          const Text(
-                                            'Scan to Pay',
-                                            style: TextStyle(
+                                          Text(
+                                            context.tr('scan_to_pay'),
+                                            style: const TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
                                               color: Colors.black87,
@@ -212,7 +257,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'GRAND TOTAL',
+                                      context.tr('grand_total'),
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
@@ -243,7 +288,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   : () => context
                                       .read<BillingBloc>()
                                       .add(ConfirmOrderEvent()),
-                              label: 'Confirm Order',
+                              label: context.tr('confirm_order'),
                               icon: Icons.check_circle,
                               isLoading: billingState.isConfirming,
                             ),
@@ -265,7 +310,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                             footer: shopState.shop.footerText,
                                           ),
                                         ),
-                                label: 'Print Receipt',
+                                label: context.tr('print_receipt'),
                                 icon: Icons.print,
                                 isLoading: billingState.isPrinting,
                               ),
@@ -277,10 +322,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   context
                                       .read<BillingBloc>()
                                       .add(ClearCartEvent());
-                                  context.go('/home');
+                                  context.pop();
                                 },
                                 icon: const Icon(Icons.check),
-                                label: const Text('Done, skip printing'),
+                                label: Text(context.tr('done_skip_printing')),
                               ),
                             ),
                           ],

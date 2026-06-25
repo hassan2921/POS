@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_settings/app_settings.dart';
 
+import '../../../../core/bloc/language_cubit.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_localizations.dart';
 import '../../../shop/presentation/bloc/shop_bloc.dart';
 import '../bloc/printer_bloc.dart';
 import '../bloc/printer_event.dart';
@@ -27,8 +29,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(context.tr('settings'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -45,8 +47,7 @@ class _SettingsPageState extends State<SettingsPage> {
             Container(
               width: double.infinity,
               color: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
               child: BlocBuilder<ShopBloc, ShopState>(
                 builder: (context, state) {
                   String shopName = 'My Shop';
@@ -97,27 +98,51 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 24),
 
+            // Language
+            _buildSectionHeader(context.tr('language_section')),
+            _buildListGroup(children: [
+              SwitchListTile(
+                title: Text(context.tr('urdu_mode')),
+                subtitle: Text(context.tr('show_app_in_urdu')),
+                value: context.isUrdu,
+                onChanged: (_) =>
+                    context.read<LanguageCubit>().toggleLanguage(),
+                activeThumbColor: AppTheme.primaryColor,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              ),
+            ]),
+
+            const SizedBox(height: 24),
+
             // Management
-            _buildSectionHeader('Management'),
+            _buildSectionHeader(context.tr('management')),
             _buildListGroup(children: [
               _buildListItem(
+                icon: Icons.dashboard,
+                title: context.tr('dashboard'),
+                subtitle: context.tr('dashboard_description'),
+                onTap: () => context.push('/dashboard'),
+              ),
+              _buildDivider(),
+              _buildListItem(
                 icon: Icons.qr_code_scanner,
-                title: 'Products',
-                subtitle: 'Manage stock and barcodes',
+                title: context.tr('products'),
+                subtitle: context.tr('manage_products'),
                 onTap: () => context.push('/products'),
               ),
               _buildDivider(),
               _buildListItem(
                 icon: Icons.storefront,
-                title: 'Shop Details',
-                subtitle: 'Edit business info & address',
+                title: context.tr('shop_details'),
+                subtitle: context.tr('edit_shop_info'),
                 onTap: () => context.push('/shop'),
               ),
               _buildDivider(),
               _buildListItem(
                 icon: Icons.receipt_long,
-                title: 'Sales History',
-                subtitle: 'View past transactions',
+                title: context.tr('sales_history'),
+                subtitle: context.tr('view_sales_transactions'),
                 onTap: () => context.push('/sales'),
               ),
             ]),
@@ -125,12 +150,12 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 24),
 
             // Security
-            _buildSectionHeader('Security'),
+            _buildSectionHeader(context.tr('security')),
             _buildListGroup(children: [
               _buildListItem(
                 icon: Icons.lock_outline,
-                title: 'Change PIN',
-                subtitle: 'Update your login PIN',
+                title: context.tr('change_pin'),
+                subtitle: context.tr('update_pin'),
                 onTap: () => context.push('/change-pin'),
               ),
             ]),
@@ -138,7 +163,7 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 24),
 
             // Hardware
-            _buildSectionHeader('Hardware'),
+            _buildSectionHeader(context.tr('hardware')),
             BlocConsumer<PrinterBloc, PrinterState>(
               listener: (context, state) {
                 if (state.errorMessage != null) {
@@ -146,8 +171,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       content: Text(state.errorMessage!),
                       backgroundColor: Colors.red));
                 } else if (state.status == PrinterStatus.connected) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Connected to printer'),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(context.tr('connected_to_printer')),
                       backgroundColor: Colors.green));
                 }
               },
@@ -160,8 +185,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       children: [
                         Text(
                           state.connectedMac != null
-                              ? (state.connectedName ?? 'Printer connected')
-                              : 'No printer connected',
+                              ? (state.connectedName ??
+                                  context.tr('print_device'))
+                              : context.tr('no_printer_connected'),
                           style:
                               TextStyle(fontSize: 12, color: Colors.grey[500]),
                         ),
@@ -175,7 +201,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(color: Colors.teal[200]!),
                             ),
-                            child: Text('CONNECTED',
+                            child: Text(context.tr('connected_status'),
                                 style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.bold,
@@ -215,8 +241,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
 
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: Text(
                 "To connect a new device, tap on the Settings gear to pair in phone's Bluetooth settings, then return and hit Refresh.",
                 style: TextStyle(
@@ -263,8 +288,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildDivider() {
-    return Divider(
-        height: 1, thickness: 1, color: Colors.grey[50], indent: 64);
+    return Divider(height: 1, thickness: 1, color: Colors.grey[50], indent: 64);
   }
 
   Widget _buildListItem({
@@ -290,8 +314,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child:
-                  Icon(icon, color: AppTheme.primaryColor, size: 20),
+              child: Icon(icon, color: AppTheme.primaryColor, size: 20),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -304,8 +327,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(subtitle,
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey[500])),
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[500])),
                   ],
                   if (subtitleWidget != null) ...[
                     const SizedBox(height: 4),

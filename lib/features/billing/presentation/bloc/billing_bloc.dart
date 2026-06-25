@@ -47,13 +47,30 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     final cleanState = state.copyWith(error: null);
     final existingIndex = cleanState.cartItems
         .indexWhere((item) => item.product.id == event.product.id);
+
     if (existingIndex >= 0) {
       final existingItem = cleanState.cartItems[existingIndex];
+      final newQuantity = existingItem.quantity + 1;
+
+      // Stock validation: prevent overselling
+      if (event.product.stock > 0 && newQuantity > event.product.stock) {
+        emit(cleanState.copyWith(
+            error:
+                '${event.product.name}: only ${event.product.stock} in stock'));
+        return;
+      }
+
       final items = List<CartItem>.from(cleanState.cartItems);
-      items[existingIndex] =
-          existingItem.copyWith(quantity: existingItem.quantity + 1);
+      items[existingIndex] = existingItem.copyWith(quantity: newQuantity);
       emit(cleanState.copyWith(cartItems: items, error: null));
     } else {
+      // Stock validation: prevent adding out-of-stock items
+      if (event.product.stock <= 0) {
+        emit(cleanState.copyWith(
+            error: '${event.product.name} is out of stock'));
+        return;
+      }
+
       emit(cleanState.copyWith(cartItems: [
         ...cleanState.cartItems,
         CartItem(product: event.product)
@@ -78,6 +95,15 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     final index = state.cartItems
         .indexWhere((item) => item.product.id == event.productId);
     if (index >= 0) {
+      final product = state.cartItems[index].product;
+
+      // Stock validation: prevent exceeding available stock
+      if (product.stock > 0 && event.quantity > product.stock) {
+        emit(state.copyWith(
+            error: '${product.name}: only ${product.stock} in stock'));
+        return;
+      }
+
       final items = List<CartItem>.from(state.cartItems);
       items[index] = items[index].copyWith(quantity: event.quantity);
       emit(state.copyWith(cartItems: items));
@@ -93,6 +119,22 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     emit(state.copyWith(isConfirming: true, clearError: true));
 
     try {
+      // Pre-confirm stock validation — re-check current stock levels
+      for (final cartItem in state.cartItems) {
+        final result =
+            await getProductByBarcodeUseCase(cartItem.product.barcode);
+        final currentProduct = result.getOrElse((_) => cartItem.product);
+        if (currentProduct.stock > 0 &&
+            cartItem.quantity > currentProduct.stock) {
+          emit(state.copyWith(
+            isConfirming: false,
+            error:
+                '${cartItem.product.name}: only ${currentProduct.stock} left in stock. Please adjust quantity.',
+          ));
+          return;
+        }
+      }
+
       // Deduct stock for each cart item
       for (final cartItem in state.cartItems) {
         final updatedProduct = Product(
@@ -102,7 +144,22 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
           price: cartItem.product.price,
           stock: (cartItem.product.stock - cartItem.quantity).clamp(0, 999999),
         );
-        await updateProductUseCase(updatedProduct);
+
+        final updateResult = await updateProductUseCase(updatedProduct);
+        var updateFailed = false;
+        updateResult.fold(
+          (failure) {
+            emit(state.copyWith(
+              isConfirming: false,
+              error:
+                  'Failed to update stock for ${updatedProduct.name}: ${failure.message}',
+            ));
+            updateFailed = true;
+          },
+          (_) {},
+        );
+
+        if (updateFailed) return;
       }
 
       // Save sale to local history
@@ -122,7 +179,21 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
         total: state.totalAmount,
         synced: false,
       );
-      await saveSaleUseCase(sale);
+
+      final saveResult = await saveSaleUseCase(sale);
+      var saveFailed = false;
+      saveResult.fold(
+        (failure) {
+          emit(state.copyWith(
+            isConfirming: false,
+            error: 'Failed to save sale: ${failure.message}',
+          ));
+          saveFailed = true;
+        },
+        (_) {},
+      );
+
+      if (saveFailed) return;
 
       emit(state.copyWith(isConfirming: false, orderConfirmed: true));
     } catch (e) {

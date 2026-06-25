@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../billing/presentation/bloc/billing_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_localizations.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../domain/entities/cart_item.dart';
 
@@ -116,7 +117,7 @@ class _HomePageState extends State<HomePage> {
                   if (_isCameraOn && mounted) _scannerController.start();
                 },
           icon: Icons.payment,
-          label: 'Review Order',
+          label: context.tr('review_order'),
         );
       }),
     );
@@ -221,18 +222,18 @@ class _HomePageState extends State<HomePage> {
                 const Icon(Icons.videocam_off, color: Colors.white, size: 32),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Camera is turned off',
-            style: TextStyle(
+          Text(
+            context.tr('camera_off_title'),
+            style: const TextStyle(
                 color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 32),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Text(
-              'Turn on your camera to start scanning barcodes and items automatically.',
+              context.tr('camera_off_subtitle'),
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ),
           const SizedBox(height: 24),
@@ -245,8 +246,8 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             icon: const Icon(Icons.videocam),
-            label: const Text('Turn on Camera',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Text(context.tr('turn_on_camera'),
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             onPressed: () {
               setState(() => _isCameraOn = true);
               _scannerController.start();
@@ -342,10 +343,10 @@ class _HomePageState extends State<HomePage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Scanned Items',
-                            style: TextStyle(
+                        Text(context.tr('scanned_items'),
+                            style: const TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.w600)),
-                        Text('$totalItems items total',
+                        Text('$totalItems ${context.tr('items')}',
                             style: const TextStyle(
                                 fontSize: 12, color: Colors.grey)),
                       ],
@@ -353,8 +354,8 @@ class _HomePageState extends State<HomePage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text('TOTAL PRICE',
-                            style: TextStyle(
+                        Text(context.tr('total_price'),
+                            style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey,
@@ -421,15 +422,16 @@ class _HomePageState extends State<HomePage> {
                 Icon(Icons.shopping_basket, size: 40, color: Colors.grey[300]),
           ),
           const SizedBox(height: 16),
-          const Text('List is empty',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(context.tr('list_is_empty'),
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'Scanned items will appear here as you scan them with the camera above.',
+              context.tr('scan_items_instruction'),
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
           ),
         ],
@@ -441,11 +443,21 @@ class _HomePageState extends State<HomePage> {
     BuildContext context,
     CartItem item,
   ) {
+    final remainingStock = item.product.stock - item.quantity;
+    final isLowStock = item.product.stock > 0 && remainingStock <= 5;
+    final isOverStock = item.product.stock > 0 && remainingStock <= 0;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(
+          color: isOverStock
+              ? Colors.red.withValues(alpha: 0.3)
+              : isLowStock
+                  ? Colors.orange.withValues(alpha: 0.3)
+                  : Colors.grey[200]!,
+        ),
         boxShadow: const [
           BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
         ],
@@ -474,6 +486,23 @@ class _HomePageState extends State<HomePage> {
                       fontSize: 14,
                       color: Colors.grey[600]),
                 ),
+                if (item.product.stock > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    isOverStock
+                        ? 'No stock remaining!'
+                        : '$remainingStock left in stock',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isOverStock
+                          ? Colors.red
+                          : isLowStock
+                              ? Colors.orange
+                              : Colors.grey[400],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -503,7 +532,10 @@ class _HomePageState extends State<HomePage> {
                   child: Text(
                     '${item.quantity}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isOverStock ? Colors.red : null,
+                    ),
                   ),
                 ),
                 _circularIconButton(

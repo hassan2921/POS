@@ -23,6 +23,9 @@ import '../../features/sales/domain/repositories/sale_repository.dart';
 import '../../features/sales/domain/usecases/sale_usecases.dart';
 import '../../features/sales/presentation/bloc/sales_bloc.dart';
 
+// Dashboard
+import '../../features/dashboard/presentation/bloc/dashboard_bloc.dart';
+
 // Billing
 import '../../features/billing/presentation/bloc/billing_bloc.dart';
 
@@ -78,4 +81,12 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetUnsyncedSalesUseCase(sl()));
   sl.registerLazySingleton(() => MarkSaleSyncedUseCase(sl()));
   sl.registerLazySingleton<SaleRepository>(() => SaleRepositoryImpl());
+
+  // ── Dashboard ─────────────────────────────────────────────────────────
+  sl.registerFactory(
+    () => DashboardBloc(
+      getAllSalesUseCase: sl(),
+      getProductsUseCase: sl(),
+    ),
+  );
 }

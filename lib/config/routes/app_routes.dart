@@ -13,6 +13,7 @@ import '../../features/shop/presentation/pages/shop_details_page.dart';
 
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/change_pin_page.dart';
+import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 
 import '../../features/sales/presentation/pages/sales_history_page.dart';
 
@@ -53,6 +54,12 @@ final router = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsPage(),
+    ),
+
+    // DASHBOARD
+    GoRoute(
+      path: '/dashboard',
+      builder: (context, state) => const DashboardPage(),
     ),
 
     // PRODUCTS

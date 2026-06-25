@@ -5,9 +5,11 @@ import 'core/data/hive_database.dart';
 import 'core/service_locator.dart' as di;
 import 'core/service/sync_service.dart';
 import 'core/theme/app_theme.dart';
+import 'core/bloc/language_cubit.dart';
 import 'features/billing/presentation/bloc/billing_bloc.dart';
 import 'features/product/presentation/bloc/product_bloc.dart';
 import 'features/shop/presentation/bloc/shop_bloc.dart';
+import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'features/settings/presentation/bloc/printer_bloc.dart';
 import 'features/settings/presentation/bloc/printer_event.dart';
 import 'features/sales/presentation/bloc/sales_bloc.dart';
@@ -35,6 +37,12 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<BillingBloc>(
           create: (_) => di.sl<BillingBloc>(),
+        ),
+        BlocProvider<DashboardBloc>(
+          create: (_) => di.sl<DashboardBloc>()..add(LoadDashboardEvent()),
+        ),
+        BlocProvider<LanguageCubit>(
+          create: (_) => LanguageCubit(),
         ),
         BlocProvider<PrinterBloc>(
           create: (_) => di.sl<PrinterBloc>()..add(InitPrinterEvent()),
