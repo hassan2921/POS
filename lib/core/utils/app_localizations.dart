@@ -156,13 +156,22 @@ class AppLocalizations {
     'scanner_left': 'بارکوڈ کو فریم میں رکھیں',
   };
 
-  static String translate(BuildContext context, String key) {
-    final language = context.watch<LanguageCubit>().state;
+  static String translate(BuildContext context, String key,
+      {bool listen = true}) {
+    final language = listen
+        ? context.watch<LanguageCubit>().state
+        : context.read<LanguageCubit>().state;
     return (language == AppLanguage.urdu ? _ur : _en)[key] ?? _en[key] ?? key;
   }
 }
 
 extension TranslateExtension on BuildContext {
+  /// Use inside build() — watches for language changes and rebuilds.
   String tr(String key) => AppLocalizations.translate(this, key);
+
+  /// Use inside listeners, onPressed, callbacks — reads once, no rebuild.
+  String trOnce(String key) =>
+      AppLocalizations.translate(this, key, listen: false);
+
   bool get isUrdu => watch<LanguageCubit>().state == AppLanguage.urdu;
 }

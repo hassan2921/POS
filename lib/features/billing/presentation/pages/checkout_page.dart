@@ -64,13 +64,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
               context.read<ProductBloc>().add(LoadProducts());
               context.read<DashboardBloc>().add(LoadDashboardEvent());
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(context.tr('order_confirmed_stock')),
+                content: Text(context.trOnce('order_confirmed_stock')), // ✅ fixed
                 backgroundColor: Colors.green,
               ));
             }
             if (state.printSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(context.tr('printed_successfully')),
+                content: Text(context.trOnce('printed_successfully')), // ✅ fixed
                 backgroundColor: Colors.green,
               ));
               context.read<BillingBloc>().add(ClearCartEvent());
