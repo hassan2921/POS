@@ -1,8 +1,10 @@
 import 'package:billing_app/core/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/utils/app_localizations.dart';
 import '../../../shop/presentation/bloc/shop_bloc.dart';
@@ -18,6 +20,149 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
+  // ── WhatsApp ─────────────────────────────────────────────────────────
+
+  Future<void> _showWhatsAppDialog(
+      BillingState billingState, ShopState shopState) async {
+    final phoneController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.chat, color: Color(0xFF25D366), size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text('Send Receipt',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Enter the customer's WhatsApp number:",
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: '92XXXXXXXXXX',
+                  prefixIcon: const Icon(Icons.phone, color: Color(0xFF25D366)),
+                  helperText: 'Include country code e.g. 923001234567',
+                  helperStyle: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Please enter a phone number';
+                  }
+                  if (val.trim().length < 10) {
+                    return 'Enter a valid number with country code';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF25D366),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            icon: const Icon(Icons.send, size: 16),
+            label: const Text('Send'),
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(ctx);
+                _sendWhatsApp(
+                  phone: phoneController.text.trim(),
+                  billingState: billingState,
+                  shopState: shopState,
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendWhatsApp({
+    required String phone,
+    required BillingState billingState,
+    required ShopState shopState,
+  }) async {
+    String shopName = 'Shop';
+    String address = '';
+    String footer = 'Thank you!';
+
+    if (shopState is ShopLoaded) {
+      shopName = shopState.shop.name;
+      address = [shopState.shop.addressLine1, shopState.shop.addressLine2]
+          .where((s) => s.isNotEmpty)
+          .join(', ');
+      footer = shopState.shop.footerText;
+    }
+
+    final sb = StringBuffer();
+    sb.writeln('🧾 *Receipt from $shopName*');
+    if (address.isNotEmpty) sb.writeln('📍 $address');
+    sb.writeln('');
+    sb.writeln('*Items:*');
+    for (final item in billingState.cartItems) {
+      sb.writeln(
+          '• ${item.product.name} x${item.quantity}  Rs. ${item.total.toStringAsFixed(2)}');
+    }
+    sb.writeln('');
+    sb.writeln('━━━━━━━━━━━━━━━━');
+    sb.writeln('*TOTAL: Rs. ${billingState.totalAmount.toStringAsFixed(2)}*');
+    sb.writeln('━━━━━━━━━━━━━━━━');
+    if (footer.isNotEmpty) sb.writeln('_${footer}_');
+
+    final encoded = Uri.encodeComponent(sb.toString());
+    final url = Uri.parse('https://wa.me/$phone?text=$encoded');
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open WhatsApp. Is it installed?'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     const borderColor = Color(0xFFE5E5EA);
@@ -64,13 +209,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
               context.read<ProductBloc>().add(LoadProducts());
               context.read<DashboardBloc>().add(LoadDashboardEvent());
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(context.trOnce('order_confirmed_stock')), // ✅ fixed
+                content: Text(context.trOnce('order_confirmed_stock')),
                 backgroundColor: Colors.green,
               ));
             }
             if (state.printSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(context.trOnce('printed_successfully')), // ✅ fixed
+                content: Text(context.trOnce('printed_successfully')),
                 backgroundColor: Colors.green,
               ));
               context.read<BillingBloc>().add(ClearCartEvent());
@@ -90,14 +235,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                 return Column(
                   children: [
-                    // ── Order items table ────────────────────────────
+                    // ── Order items table ──────────────────────────────
                     Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 16),
                         child: Column(
                           children: [
-                            // Stock warning banner
+                            // Low-stock warning banner
                             Builder(builder: (context) {
                               final lowStockItems = billingState.cartItems
                                   .where((item) =>
@@ -135,6 +280,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 ),
                               );
                             }),
+
+                            // Items table
                             Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -182,13 +329,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                             TextAlign.left,
                                           ),
                                           _buildDataCell(
-                                              'Rs. ${item.product.price.toStringAsFixed(2)}',
-                                              TextAlign.right,
-                                              isSubtitle: true),
+                                            'Rs. ${item.product.price.toStringAsFixed(2)}',
+                                            TextAlign.right,
+                                            isSubtitle: true,
+                                          ),
                                           _buildDataCell(
-                                              'Rs. ${item.total.toStringAsFixed(2)}',
-                                              TextAlign.right,
-                                              isBold: true),
+                                            'Rs. ${item.total.toStringAsFixed(2)}',
+                                            TextAlign.right,
+                                            isBold: true,
+                                          ),
                                         ],
                                       );
                                     }),
@@ -202,7 +351,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ),
                     ),
 
-                    // ── Bottom bar ───────────────────────────────────
+                    // ── Bottom bar ─────────────────────────────────────
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.9),
@@ -225,7 +374,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             child: Column(
                               children: [
                                 const SizedBox(height: 8),
-                                // QR code
                                 upiId.isNotEmpty
                                     ? Column(
                                         children: [
@@ -251,7 +399,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       )
                                     : const SizedBox.shrink(),
                                 const SizedBox(height: 15),
-                                // Grand total
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -280,7 +427,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             ),
                           ),
 
-                          // ── Confirm button (before confirmed) ──────
+                          // ── BEFORE confirmed: Confirm button ──────────
                           if (!billingState.orderConfirmed)
                             PrimaryButton(
                               onPressed: billingState.isConfirming
@@ -293,7 +440,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               isLoading: billingState.isConfirming,
                             ),
 
-                          // ── Print + Done (after confirmed) ─────────
+                          // ── AFTER confirmed: Print + WhatsApp + Done ──
                           if (billingState.orderConfirmed) ...[
                             if (shopState is ShopLoaded)
                               PrimaryButton(
@@ -314,20 +461,62 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 icon: Icons.print,
                                 isLoading: billingState.isPrinting,
                               ),
-                            const SizedBox(height: 4),
+
+                            // WhatsApp + Done side by side
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: TextButton.icon(
-                                onPressed: () {
-                                  context
-                                      .read<BillingBloc>()
-                                      .add(ClearCartEvent());
-                                  context.pop();
-                                },
-                                icon: const Icon(Icons.check),
-                                label: Text(context.tr('done_skip_printing')),
+                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => _showWhatsAppDialog(
+                                          billingState, shopState),
+                                      icon: const Icon(Icons.chat,
+                                          color: Color(0xFF25D366), size: 18),
+                                      label: const Text(
+                                        'WhatsApp',
+                                        style: TextStyle(
+                                          color: Color(0xFF25D366),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(
+                                            color: Color(0xFF25D366),
+                                            width: 1.5),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 13),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {
+                                        context
+                                            .read<BillingBloc>()
+                                            .add(ClearCartEvent());
+                                        context.pop();
+                                      },
+                                      icon: const Icon(Icons.check, size: 18),
+                                      label: Text(
+                                          context.tr('done_skip_printing')),
+                                      style: OutlinedButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 13),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                            const SizedBox(height: 8),
                           ],
                         ],
                       ),
