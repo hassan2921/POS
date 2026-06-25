@@ -20,41 +20,60 @@ class _CheckoutPageState extends State<CheckoutPage> {
     const borderColor = Color(0xFFE5E5EA);
 
     return PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (bool didPop, dynamic result) {
-          if (didPop) return;
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        if (didPop) return;
+        if (!context.read<BillingBloc>().state.orderConfirmed) {
           context.read<BillingBloc>().add(ClearCartEvent());
-          context.go('/');
-        },
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Checkout',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-            centerTitle: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.chevron_left,
-                  size: 28, color: Theme.of(context).primaryColor),
-              onPressed: () {
+        }
+        context.go('/home');
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Review Order',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.chevron_left,
+                size: 28, color: Theme.of(context).primaryColor),
+            onPressed: () {
+              if (!context.read<BillingBloc>().state.orderConfirmed) {
                 context.read<BillingBloc>().add(ClearCartEvent());
-                context.pop();
-              },
-            ),
-          ),
-          body: BlocConsumer<BillingBloc, BillingState>(
-            listener: (context, state) {
-              if (state.printSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Printed successfully'),
-                    backgroundColor: Colors.green));
-                // context.read<BillingBloc>().add(ClearCartEvent());
-                // context.go('/');
               }
+              context.go('/home');
             },
-            builder: (context, billingState) {
-              return BlocBuilder<ShopBloc, ShopState>(
-                  builder: (context, shopState) {
+          ),
+        ),
+        body: BlocConsumer<BillingBloc, BillingState>(
+          listener: (context, state) {
+            if (state.error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(state.error!),
+                backgroundColor: Colors.red,
+              ));
+            }
+            if (state.orderConfirmed &&
+                !state.isPrinting &&
+                !state.printSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Order confirmed! Stock updated.'),
+                backgroundColor: Colors.green,
+              ));
+            }
+            if (state.printSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Printed successfully!'),
+                backgroundColor: Colors.green,
+              ));
+              context.read<BillingBloc>().add(ClearCartEvent());
+              context.go('/home');
+            }
+          },
+          builder: (context, billingState) {
+            return BlocBuilder<ShopBloc, ShopState>(
+              builder: (context, shopState) {
                 String upiId = '';
                 String shopName = 'Shop';
 
@@ -65,13 +84,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                 return Column(
                   children: [
+                    // ── Order items table ────────────────────────────
                     Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 16),
                         child: Column(
                           children: [
-                            // Table
                             Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -94,7 +113,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     bottom: BorderSide(color: borderColor),
                                   ),
                                   children: [
-                                    // Header row
                                     TableRow(
                                       decoration: const BoxDecoration(
                                         color: Color(0xFFF8FAFC),
@@ -111,7 +129,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                             'Total', TextAlign.right),
                                       ],
                                     ),
-                                    // Items rows
                                     ...billingState.cartItems.map((item) {
                                       return TableRow(
                                         children: [
@@ -134,16 +151,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 24),
-
-                            const SizedBox(
-                                height: 120), // padding for bottom fixed bar
+                            const SizedBox(height: 120),
                           ],
                         ),
                       ),
                     ),
 
-                    // Bottom Bar
+                    // ── Bottom bar ───────────────────────────────────
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.9),
@@ -162,14 +176,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Column(
                               children: [
-                                const SizedBox(
-                                  height: 8,
-                                ),
+                                const SizedBox(height: 8),
+                                // QR code
                                 upiId.isNotEmpty
                                     ? Column(
                                         children: [
@@ -195,6 +206,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       )
                                     : const SizedBox.shrink(),
                                 const SizedBox(height: 15),
+                                // Grand total
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -222,37 +234,67 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               ],
                             ),
                           ),
-                          PrimaryButton(
-                            onPressed: () {
-                              if (shopState is ShopLoaded) {
-                                context.read<BillingBloc>().add(
-                                    PrintReceiptEvent(
-                                        shopName: shopState.shop.name,
-                                        address1: shopState.shop.addressLine1,
-                                        address2: shopState.shop.addressLine2,
-                                        phone: shopState.shop.phoneNumber,
-                                        footer: shopState.shop.footerText));
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content:
-                                            Text('Shop details not loaded'),
-                                        backgroundColor: Colors.red));
-                              }
-                            },
-                            label: 'Print Receipt',
-                            icon: Icons.print,
-                            isLoading: billingState.isPrinting,
-                          ),
+
+                          // ── Confirm button (before confirmed) ──────
+                          if (!billingState.orderConfirmed)
+                            PrimaryButton(
+                              onPressed: billingState.isConfirming
+                                  ? null
+                                  : () => context
+                                      .read<BillingBloc>()
+                                      .add(ConfirmOrderEvent()),
+                              label: 'Confirm Order',
+                              icon: Icons.check_circle,
+                              isLoading: billingState.isConfirming,
+                            ),
+
+                          // ── Print + Done (after confirmed) ─────────
+                          if (billingState.orderConfirmed) ...[
+                            if (shopState is ShopLoaded)
+                              PrimaryButton(
+                                onPressed: billingState.isPrinting
+                                    ? null
+                                    : () => context.read<BillingBloc>().add(
+                                          PrintReceiptEvent(
+                                            shopName: shopState.shop.name,
+                                            address1:
+                                                shopState.shop.addressLine1,
+                                            address2:
+                                                shopState.shop.addressLine2,
+                                            phone: shopState.shop.phoneNumber,
+                                            footer: shopState.shop.footerText,
+                                          ),
+                                        ),
+                                label: 'Print Receipt',
+                                icon: Icons.print,
+                                isLoading: billingState.isPrinting,
+                              ),
+                            const SizedBox(height: 4),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  context
+                                      .read<BillingBloc>()
+                                      .add(ClearCartEvent());
+                                  context.go('/home');
+                                },
+                                icon: const Icon(Icons.check),
+                                label: const Text('Done, skip printing'),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ],
                 );
-              });
-            },
-          ),
-        ));
+              },
+            );
+          },
+        ),
+      ),
+    );
   }
 
   Widget _buildHeaderCell(String text, TextAlign align) {

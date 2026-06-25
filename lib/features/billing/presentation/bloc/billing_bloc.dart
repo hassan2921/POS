@@ -28,6 +28,7 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     on<RemoveProductFromCartEvent>(_onRemoveProductFromCart);
     on<UpdateQuantityEvent>(_onUpdateQuantity);
     on<ClearCartEvent>(_onClearCart);
+    on<ConfirmOrderEvent>(_onConfirmOrder);
     on<PrintReceiptEvent>(_onPrintReceipt);
   }
 
@@ -53,9 +54,10 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
           existingItem.copyWith(quantity: existingItem.quantity + 1);
       emit(cleanState.copyWith(cartItems: items, error: null));
     } else {
-      emit(cleanState.copyWith(
-          cartItems: [...cleanState.cartItems, CartItem(product: event.product)],
-          error: null));
+      emit(cleanState.copyWith(cartItems: [
+        ...cleanState.cartItems,
+        CartItem(product: event.product)
+      ], error: null));
     }
   }
 
@@ -86,6 +88,49 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     emit(const BillingState());
   }
 
+  Future<void> _onConfirmOrder(
+      ConfirmOrderEvent event, Emitter<BillingState> emit) async {
+    emit(state.copyWith(isConfirming: true, clearError: true));
+
+    try {
+      // Deduct stock for each cart item
+      for (final cartItem in state.cartItems) {
+        final updatedProduct = Product(
+          id: cartItem.product.id,
+          name: cartItem.product.name,
+          barcode: cartItem.product.barcode,
+          price: cartItem.product.price,
+          stock: (cartItem.product.stock - cartItem.quantity).clamp(0, 999999),
+        );
+        await updateProductUseCase(updatedProduct);
+      }
+
+      // Save sale to local history
+      final sale = Sale(
+        id: const Uuid().v4(),
+        date: DateTime.now(),
+        items: state.cartItems
+            .map((c) => SaleItem(
+                  productId: c.product.id,
+                  productName: c.product.name,
+                  barcode: c.product.barcode,
+                  quantity: c.quantity,
+                  price: c.product.price,
+                  total: c.total,
+                ))
+            .toList(),
+        total: state.totalAmount,
+        synced: false,
+      );
+      await saveSaleUseCase(sale);
+
+      emit(state.copyWith(isConfirming: false, orderConfirmed: true));
+    } catch (e) {
+      emit(state.copyWith(
+          isConfirming: false, error: 'Failed to confirm order: $e'));
+    }
+  }
+
   Future<void> _onPrintReceipt(
       PrintReceiptEvent event, Emitter<BillingState> emit) async {
     final printerHelper = PrinterHelper();
@@ -107,7 +152,8 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
       }
     }
 
-    emit(state.copyWith(isPrinting: true, printSuccess: false, clearError: true));
+    emit(state.copyWith(
+        isPrinting: true, printSuccess: false, clearError: true));
 
     try {
       final items = state.cartItems
@@ -128,37 +174,6 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
         total: state.totalAmount,
         footer: event.footer,
       );
-
-      // ── Deduct stock ──────────────────────────────────────────────────
-      for (final cartItem in state.cartItems) {
-        final updatedProduct = Product(
-          id: cartItem.product.id,
-          name: cartItem.product.name,
-          barcode: cartItem.product.barcode,
-          price: cartItem.product.price,
-          stock: (cartItem.product.stock - cartItem.quantity).clamp(0, 999999),
-        );
-        await updateProductUseCase(updatedProduct);
-      }
-
-      // ── Save sale to local history ────────────────────────────────────
-      final sale = Sale(
-        id: const Uuid().v4(),
-        date: DateTime.now(),
-        items: state.cartItems
-            .map((c) => SaleItem(
-                  productId: c.product.id,
-                  productName: c.product.name,
-                  barcode: c.product.barcode,
-                  quantity: c.quantity,
-                  price: c.product.price,
-                  total: c.total,
-                ))
-            .toList(),
-        total: state.totalAmount,
-        synced: false, // Will be synced by SyncService when online
-      );
-      await saveSaleUseCase(sale);
 
       emit(state.copyWith(isPrinting: false, printSuccess: true));
     } catch (e) {
