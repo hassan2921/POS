@@ -14,7 +14,7 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final _currency = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
+  final _currency = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 2);
 
   @override
   void initState() {

@@ -180,7 +180,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 return _buildListGroup(children: [
                   _buildListItem(
                     icon: Icons.print,
-                    title: 'Print Device',
+                    title: context.tr('print_device'),
                     subtitleWidget: Row(
                       children: [
                         Text(

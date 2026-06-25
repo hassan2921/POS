@@ -99,8 +99,10 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
         children: [
           _summaryItem('Total Sales', '${state.sales.length}', Icons.receipt),
           Container(width: 1, height: 40, color: Colors.white30),
-          _summaryItem('Total Revenue',
-              '₹${state.totalRevenue.toStringAsFixed(2)}', Icons.currency_rupee),
+          _summaryItem(
+              'Total Revenue',
+              'Rs. ${state.totalRevenue.toStringAsFixed(2)}',
+              Icons.currency_rupee),
           Container(width: 1, height: 40, color: Colors.white30),
           _summaryItem(
             'Unsynced',
@@ -119,7 +121,9 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
         const SizedBox(height: 6),
         Text(value,
             style: const TextStyle(
-                color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
         Text(label,
             style: const TextStyle(color: Colors.white70, fontSize: 11)),
@@ -156,7 +160,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                 color: Color(0xFF6C63FF), size: 20),
           ),
           title: Text(
-            '₹${sale.total.toStringAsFixed(2)}',
+            'Rs. ${sale.total.toStringAsFixed(2)}',
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           subtitle: Row(
@@ -245,8 +249,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                               style: const TextStyle(fontSize: 13))),
                       Expanded(
                           flex: 2,
-                          child: Text(
-                              '₹${item.total.toStringAsFixed(2)}',
+                          child: Text('Rs. ${item.total.toStringAsFixed(2)}',
                               textAlign: TextAlign.right,
                               style: const TextStyle(
                                   fontSize: 13, fontWeight: FontWeight.w600))),
@@ -263,7 +266,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                         color: Colors.grey,
                         fontSize: 12,
                         letterSpacing: 1)),
-                Text('₹${sale.total.toStringAsFixed(2)}',
+                Text('Rs. ${sale.total.toStringAsFixed(2)}',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

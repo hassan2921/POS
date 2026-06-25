@@ -94,7 +94,8 @@ class _ProductListPageState extends State<ProductListPage> {
                         const SizedBox(width: 12),
                         Container(
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                            color:
+                                AppTheme.primaryColor.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: IconButton(
@@ -165,7 +166,6 @@ class _ProductListPageState extends State<ProductListPage> {
               },
             ),
           ),
-
           Expanded(
             child: BlocConsumer<ProductBloc, ProductState>(
               listener: (context, state) {
@@ -265,7 +265,7 @@ class _ProductListPageState extends State<ProductListPage> {
                                 Row(
                                   children: [
                                     Text(
-                                      '₹${product.price.toStringAsFixed(2)}',
+                                      'Rs. ${product.price.toStringAsFixed(2)}',
                                       style: TextStyle(
                                           fontWeight: FontWeight.w500,
                                           color: Colors.grey[600]),
@@ -324,10 +324,8 @@ class _ProductListPageState extends State<ProductListPage> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: IconButton(
-                                  icon: const Icon(
-                                      Icons.delete_outline_rounded,
-                                      color: Colors.red,
-                                      size: 20),
+                                  icon: const Icon(Icons.delete_outline_rounded,
+                                      color: Colors.red, size: 20),
                                   constraints: const BoxConstraints(),
                                   padding: const EdgeInsets.all(8),
                                   onPressed: () =>
@@ -357,9 +355,7 @@ class _ProductListPageState extends State<ProductListPage> {
   }
 
   Widget _stockChip(
-      {required String label,
-      required Color color,
-      required IconData icon}) {
+      {required String label, required Color color, required IconData icon}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(

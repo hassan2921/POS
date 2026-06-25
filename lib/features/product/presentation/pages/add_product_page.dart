@@ -22,7 +22,7 @@ class _AddProductPageState extends State<AddProductPage> {
   String _name = '';
   String _barcode = '';
   double _price = 0.0;
-  int _stock = 0;  // ← added
+  int _stock = 0; // ← added
 
   void _scanBarcode() async {
     final result = await context.push<String>('/scanner');
@@ -56,7 +56,7 @@ class _AddProductPageState extends State<AddProductPage> {
         name: _name,
         barcode: _barcode,
         price: _price,
-        stock: _stock,  // ← added
+        stock: _stock, // ← added
       );
 
       context.read<ProductBloc>().add(AddProduct(product));
@@ -137,7 +137,7 @@ class _AddProductPageState extends State<AddProductPage> {
                         const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
                       hintText: '0.00',
-                      prefixText: '₹ ',
+                      prefixText: 'Rs. ',
                       prefixStyle: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -146,15 +146,17 @@ class _AddProductPageState extends State<AddProductPage> {
                     validator: AppValidators.price,
                     onSaved: (value) => _price = double.parse(value!),
                   ),
-                  const SizedBox(height: 24),      // ← added below
+                  const SizedBox(height: 24), // ← added below
                   const InputLabel(text: 'Stock'),
                   TextFormField(
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       hintText: 'e.g. 100',
                     ),
-                    validator: AppValidators.required('Please enter stock quantity'),
-                    onSaved: (value) => _stock = int.tryParse(value ?? '0') ?? 0,
+                    validator:
+                        AppValidators.required('Please enter stock quantity'),
+                    onSaved: (value) =>
+                        _stock = int.tryParse(value ?? '0') ?? 0,
                   ),
                 ],
               ),

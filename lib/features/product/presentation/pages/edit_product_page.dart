@@ -121,7 +121,7 @@ class _EditProductPageState extends State<EditProductPage> {
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
-                      prefixText: '₹ ',
+                      prefixText: 'Rs. ',
                       prefixStyle: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
