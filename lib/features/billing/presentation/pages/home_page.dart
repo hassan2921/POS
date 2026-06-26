@@ -148,6 +148,19 @@ class _HomePageState extends State<HomePage> {
           ),
           if (!_isCameraOn) _buildCameraOffState(),
 
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            child: _buildOverlayButton(
+              icon: Icons.menu_book_rounded,
+              onPressed: () async {
+                _scannerController.stop();
+                await context.push('/khata');
+                if (_isCameraOn && mounted) _scannerController.start();
+              },
+            ),
+          ),
+
           // Overlay Actions (Top Right)
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
@@ -364,6 +377,43 @@ class _HomePageState extends State<HomePage> {
                                 fontSize: 12, color: Colors.grey)),
                       ],
                     ),
+                    // ── Manual item button ──────────────────────────────
+                    Tooltip(
+                      message: context.tr('manual_add_tooltip'),
+                      child: InkWell(
+                        onTap: () => _showManualItemSheet(context),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .primaryColor
+                                .withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Theme.of(context)
+                                  .primaryColor
+                                  .withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.edit_note_rounded,
+                                  size: 18,
+                                  color: Theme.of(context).primaryColor),
+                              const SizedBox(width: 4),
+                              Text(context.tr('manual'),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).primaryColor)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -503,8 +553,8 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 4),
                   Text(
                     isOverStock
-                        ? 'No stock remaining!'
-                        : '$remainingStock left in stock',
+                        ? context.tr('no_stock_remaining')
+                        : '$remainingStock ${context.tr('left_in_stock')}',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -577,6 +627,182 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ── Manual Item Sheet ─────────────────────────────────────────────────────
+
+  void _showManualItemSheet(BuildContext context) {
+    final nameCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+    int qty = 1;
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.edit_note_rounded,
+                              color: Theme.of(context).primaryColor, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(context.tr('add_item_manually'),
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Item Name
+                    TextFormField(
+                      controller: nameCtrl,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: InputDecoration(
+                        labelText: context.tr('item_name'),
+                        hintText: context.tr('item_name_hint'),
+                        prefixIcon: const Icon(Icons.label_outline),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? context.trOnce('item_name_required')
+                          : null,
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Price
+                    TextFormField(
+                      controller: priceCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: context.tr('price_label'),
+                        hintText: '0.00',
+                        prefixIcon: const Icon(Icons.currency_rupee),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return context.trOnce('enter_price');
+                        final p = double.tryParse(v.trim());
+                        if (p == null || p <= 0) return context.trOnce('enter_valid_price');
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Quantity stepper
+                    Row(
+                      children: [
+                        Text(context.tr('quantity'),
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove, size: 20),
+                                onPressed: qty > 1
+                                    ? () => setSheetState(() => qty--)
+                                    : null,
+                              ),
+                              SizedBox(
+                                width: 36,
+                                child: Text('$qty',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.add, size: 20),
+                                onPressed: () =>
+                                    setSheetState(() => qty++),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Add button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.add_shopping_cart),
+                        label: Text(context.tr('add_to_cart'),
+                            style: const TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          if (formKey.currentState!.validate()) {
+                            context.read<BillingBloc>().add(AddManualItemEvent(
+                                  name: nameCtrl.text.trim(),
+                                  price: double.parse(priceCtrl.text.trim()),
+                                  quantity: qty,
+                                ));
+                            Navigator.of(ctx).pop();
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // A floating Details/Checkout Button at the very bottom
   // Added a Stack wrapper below to overlay this button
 }
+

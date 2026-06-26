@@ -25,6 +25,7 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
   }) : super(const BillingState()) {
     on<ScanBarcodeEvent>(_onScanBarcode);
     on<AddProductToCartEvent>(_onAddProductToCart);
+    on<AddManualItemEvent>(_onAddManualItem);
     on<RemoveProductFromCartEvent>(_onRemoveProductFromCart);
     on<UpdateQuantityEvent>(_onUpdateQuantity);
     on<ClearCartEvent>(_onClearCart);
@@ -38,8 +39,34 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     result.fold(
       (failure) =>
           emit(state.copyWith(error: 'Product not found: ${event.barcode}')),
-      (product) => add(AddProductToCartEvent(product)),
+      (product) {
+        // Clear any sticky error from a previous failed scan BEFORE adding the
+        // product, so the UI doesn't briefly flash an old "Product not found"
+        // snackbar while AddProductToCartEvent is being processed.
+        emit(state.copyWith(clearError: true));
+        add(AddProductToCartEvent(product));
+      },
     );
+  }
+
+  /// Handles adding a loose/custom item (no barcode) directly to the cart.
+  /// Creates a temporary [Product] with a MANUAL-prefixed ID so it never
+  /// collides with real products and stock-tracking is skipped (stock == 0).
+  void _onAddManualItem(
+      AddManualItemEvent event, Emitter<BillingState> emit) {
+    final manualId = 'MANUAL-${const Uuid().v4()}';
+    final product = Product(
+      id: manualId,
+      name: event.name.trim(),
+      barcode: manualId,
+      price: event.price,
+      stock: 0, // 0 = no stock tracking — skips stock guards
+    );
+    final items = [
+      ...state.cartItems,
+      CartItem(product: product, quantity: event.quantity),
+    ];
+    emit(state.copyWith(cartItems: items, clearError: true));
   }
 
   void _onAddProductToCart(

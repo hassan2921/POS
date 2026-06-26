@@ -23,13 +23,20 @@ class ShopModelAdapter extends TypeAdapter<ShopModel> {
       phoneNumber: fields[3] as String,
       upiId: fields[4] as String,
       footerText: fields[5] as String,
+      jazzCashNumber: fields[6] as String? ?? '',
+      easypaisaNumber: fields[7] as String? ?? '',
+      nayapayNumber: fields[8] as String? ?? '',
+      bankName: fields[9] as String? ?? '',
+      bankAccountTitle: fields[10] as String? ?? '',
+      bankAccountNumber: fields[11] as String? ?? '',
+      bankIban: fields[12] as String? ?? '',
     );
   }
 
   @override
   void write(BinaryWriter writer, ShopModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -41,7 +48,21 @@ class ShopModelAdapter extends TypeAdapter<ShopModel> {
       ..writeByte(4)
       ..write(obj.upiId)
       ..writeByte(5)
-      ..write(obj.footerText);
+      ..write(obj.footerText)
+      ..writeByte(6)
+      ..write(obj.jazzCashNumber)
+      ..writeByte(7)
+      ..write(obj.easypaisaNumber)
+      ..writeByte(8)
+      ..write(obj.nayapayNumber)
+      ..writeByte(9)
+      ..write(obj.bankName)
+      ..writeByte(10)
+      ..write(obj.bankAccountTitle)
+      ..writeByte(11)
+      ..write(obj.bankAccountNumber)
+      ..writeByte(12)
+      ..write(obj.bankIban);
   }
 
   @override

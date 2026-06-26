@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/billing/presentation/pages/pin_page.dart';
@@ -18,23 +19,22 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/sales/presentation/pages/sales_history_page.dart';
 
 import '../../features/product/domain/entities/product.dart';
+import '../../features/khata/presentation/pages/khata_page.dart';
+import '../../features/khata/presentation/pages/customer_detail_page.dart';
+import '../../features/khata/domain/entities/customer.dart';
 import '../../core/service/pin_service.dart';
+
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
 
 final router = GoRouter(
   initialLocation: '/pin',
+  observers: [routeObserver],
   redirect: (context, state) {
     final isAuthenticated = PinService.isAuthenticated();
     final isGoingToPin = state.matchedLocation == '/pin';
-
-    if (!isAuthenticated) {
-      if (!isGoingToPin) {
-        return '/pin';
-      }
-    } else {
-      if (isGoingToPin) {
-        return '/home';
-      }
-    }
+    if (!isAuthenticated && !isGoingToPin) return '/pin';
+    if (isAuthenticated && isGoingToPin) return '/home';
     return null;
   },
   routes: [
@@ -108,6 +108,20 @@ final router = GoRouter(
     GoRoute(
       path: '/sales',
       builder: (context, state) => const SalesHistoryPage(),
+    ),
+
+    // KHATA
+    GoRoute(
+      path: '/khata',
+      builder: (context, state) => const KhataPage(),
+    ),
+    GoRoute(
+      path: '/khata/:customerId',
+      builder: (context, state) {
+        final customer = state.extra as Customer?;
+        if (customer == null) return const KhataPage();
+        return CustomerDetailPage(customer: customer);
+      },
     ),
 
     // SCANNER (global, used from product pages too)

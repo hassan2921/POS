@@ -13,6 +13,7 @@ import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'features/settings/presentation/bloc/printer_bloc.dart';
 import 'features/settings/presentation/bloc/printer_event.dart';
 import 'features/sales/presentation/bloc/sales_bloc.dart';
+import 'features/khata/presentation/bloc/khata_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +50,9 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<SalesBloc>(
           create: (_) => di.sl<SalesBloc>()..add(LoadSalesEvent()),
+        ),
+        BlocProvider<KhataBloc>(
+          create: (_) => di.sl<KhataBloc>()..add(LoadKhataEvent()),
         ),
       ],
       child: MaterialApp.router(

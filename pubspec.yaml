@@ -18,6 +18,9 @@ dependencies:
   
   # Functional Programming
   fpdart: ^1.1.0
+  #whatsapp sharing
+  share_plus: ^10.0.0
+  path_provider: ^2.1.0
   
   # Code Generation Annotations
   json_annotation: ^4.9.0
@@ -46,6 +49,7 @@ dependencies:
   fl_chart: ^0.69.0
 
   url_launcher: ^6.3.0
+  dartz: ^0.10.1
 
 dev_dependencies:
   flutter_test:
