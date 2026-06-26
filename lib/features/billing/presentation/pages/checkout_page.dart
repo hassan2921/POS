@@ -1142,7 +1142,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     labelText: context.trOnce('paid_now_label'),
-                    prefixIcon: const Icon(Icons.currency_rupee, size: 18),
+                    prefixText: 'Rs. ',
+                    prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                     isDense: true,
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10)),

@@ -340,7 +340,8 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                 autofocus: true,
                 decoration: InputDecoration(
                   labelText: context.tr('amount_given_label'),
-                  prefixIcon: const Icon(Icons.currency_rupee),
+                  prefixText: 'Rs. ',
+                  prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
@@ -438,7 +439,8 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                 autofocus: true,
                 decoration: InputDecoration(
                   labelText: context.tr('amount_received'),
-                  prefixIcon: const Icon(Icons.currency_rupee),
+                  prefixText: 'Rs. ',
+                  prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),

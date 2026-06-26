@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vibration/vibration.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../billing/presentation/bloc/billing_bloc.dart';
+import '../../../../core/service/beep_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_localizations.dart';
 import '../../../../core/widgets/primary_button.dart';
@@ -66,10 +66,10 @@ class _HomePageState extends State<HomePage> {
         _lastScanTimes[rawValue] = now;
 
         // Beep and vibrate on successful scan
-        SystemSound.play(SystemSoundType.click);
+        BeepService.beep();
         final hasVibrator = await Vibration.hasVibrator();
         if (hasVibrator == true) {
-          Vibration.vibrate();
+          Vibration.vibrate(duration: 80);
         }
 
         if (mounted) {
@@ -712,7 +712,8 @@ class _HomePageState extends State<HomePage> {
                       decoration: InputDecoration(
                         labelText: context.tr('price_label'),
                         hintText: '0.00',
-                        prefixIcon: const Icon(Icons.currency_rupee),
+                        prefixText: 'Rs. ',
+                        prefixStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
