@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vibration/vibration.dart';
-
 import '../../../../core/utils/app_localizations.dart';
 
 class ScannerPage extends StatefulWidget {

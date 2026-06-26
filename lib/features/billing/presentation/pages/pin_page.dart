@@ -59,6 +59,7 @@ class _PinPageState extends State<PinPage> {
         // Step 2: confirm match
         if (_enteredPin == _confirmPin) {
           await PinService.setPin(_enteredPin);
+          PinService.authenticate();
           if (mounted) context.go('/home');
         } else {
           setState(() {
@@ -80,6 +81,7 @@ class _PinPageState extends State<PinPage> {
     } else {
       // Login mode
       if (PinService.verifyPin(_enteredPin)) {
+        PinService.authenticate();
         if (mounted) context.go('/home');
       } else {
         setState(() {

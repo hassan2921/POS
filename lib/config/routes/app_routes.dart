@@ -18,9 +18,25 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/sales/presentation/pages/sales_history_page.dart';
 
 import '../../features/product/domain/entities/product.dart';
+import '../../core/service/pin_service.dart';
 
 final router = GoRouter(
   initialLocation: '/pin',
+  redirect: (context, state) {
+    final isAuthenticated = PinService.isAuthenticated();
+    final isGoingToPin = state.matchedLocation == '/pin';
+
+    if (!isAuthenticated) {
+      if (!isGoingToPin) {
+        return '/pin';
+      }
+    } else {
+      if (isGoingToPin) {
+        return '/home';
+      }
+    }
+    return null;
+  },
   routes: [
     // PIN LOGIN / SETUP
     GoRoute(

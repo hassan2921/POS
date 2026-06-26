@@ -10,6 +10,7 @@ import '../../../shop/presentation/bloc/shop_bloc.dart';
 import '../bloc/printer_bloc.dart';
 import '../bloc/printer_event.dart';
 import '../bloc/printer_state.dart';
+import '../../../../core/service/pin_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -157,6 +158,16 @@ class _SettingsPageState extends State<SettingsPage> {
                 title: context.tr('change_pin'),
                 subtitle: context.tr('update_pin'),
                 onTap: () => context.push('/change-pin'),
+              ),
+              _buildDivider(),
+              _buildListItem(
+                icon: Icons.lock,
+                title: context.tr('lock_app'),
+                subtitle: context.tr('lock_app_description'),
+                onTap: () {
+                  PinService.logout();
+                  context.go('/pin');
+                },
               ),
             ]),
 
