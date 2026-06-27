@@ -53,7 +53,9 @@ class _AddProductPageState extends State<AddProductPage> {
       if (existingProduct != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.trOnce('barcode_exists').replaceAll('{barcode}', _barcode)),
+            content: Text(context
+                .trOnce('barcode_exists')
+                .replaceAll('{barcode}', _barcode)),
             backgroundColor: Colors.red,
           ),
         );
@@ -86,7 +88,8 @@ class _AddProductPageState extends State<AddProductPage> {
             onPressed: () => context.pop(),
           ),
           title: Text(context.tr('add_product_title'),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           centerTitle: true,
         ),
         body: SafeArea(
@@ -107,7 +110,8 @@ class _AddProductPageState extends State<AddProductPage> {
                           decoration: InputDecoration(
                             hintText: context.tr('scan_or_enter_barcode'),
                           ),
-                          validator: AppValidators.required(context.trOnce('barcode_required')),
+                          validator: AppValidators.required(
+                              context.trOnce('barcode_required')),
                           onSaved: (value) => _barcode = value!,
                         ),
                       ),
@@ -128,7 +132,8 @@ class _AddProductPageState extends State<AddProductPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(context.tr('scan_to_search'),
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF4C669A))),
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF4C669A))),
                   const SizedBox(height: 24),
                   InputLabel(text: context.tr('product_name')),
                   TextFormField(
@@ -136,7 +141,8 @@ class _AddProductPageState extends State<AddProductPage> {
                       hintText: context.tr('product_name_hint'),
                     ),
                     textCapitalization: TextCapitalization.words,
-                    validator: AppValidators.required(context.trOnce('name_required')),
+                    validator:
+                        AppValidators.required(context.trOnce('name_required')),
                     onSaved: (value) => _name = value!,
                   ),
                   const SizedBox(height: 24),
@@ -166,7 +172,8 @@ class _AddProductPageState extends State<AddProductPage> {
                     decoration: InputDecoration(
                       hintText: context.tr('stock_hint'),
                     ),
-                    validator: AppValidators.required(context.trOnce('stock_required')),
+                    validator: AppValidators.required(
+                        context.trOnce('stock_required')),
                     onSaved: (value) =>
                         _stock = int.tryParse(value ?? '0') ?? 0,
                   ),
@@ -178,17 +185,10 @@ class _AddProductPageState extends State<AddProductPage> {
                       hintText: context.tr('unit_hint'),
                     ),
                     items: [
-                      DropdownMenuItem(value: null, child: Text(context.tr('unit_none'))),
-                      DropdownMenuItem(value: 'pcs', child: Text(context.tr('unit_pcs'))),
-                      DropdownMenuItem(value: 'kg', child: Text(context.tr('unit_kg'))),
-                      DropdownMenuItem(value: 'g', child: Text(context.tr('unit_g'))),
-                      DropdownMenuItem(value: 'ltr', child: Text(context.tr('unit_ltr'))),
-                      DropdownMenuItem(value: 'ml', child: Text(context.tr('unit_ml'))),
-                      DropdownMenuItem(value: 'dozen', child: Text(context.tr('unit_dozen'))),
-                      DropdownMenuItem(value: 'box', child: Text(context.tr('unit_box'))),
-                      DropdownMenuItem(value: 'pack', child: Text(context.tr('unit_pack'))),
-                      DropdownMenuItem(value: 'm', child: Text(context.tr('unit_m'))),
-                      DropdownMenuItem(value: 'ft', child: Text(context.tr('unit_ft'))),
+                      DropdownMenuItem(
+                          value: null, child: Text(context.tr('unit_none'))),
+                      DropdownMenuItem(
+                          value: 'kg', child: Text(context.tr('unit_kg'))),
                     ],
                     onChanged: (v) => setState(() => _unit = v ?? ''),
                   ),

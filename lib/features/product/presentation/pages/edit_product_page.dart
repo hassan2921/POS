@@ -63,7 +63,8 @@ class _EditProductPageState extends State<EditProductPage> {
             onPressed: () => context.pop(),
           ),
           title: Text(context.tr('edit_product_title'),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           centerTitle: true,
         ),
         body: SafeArea(
@@ -114,7 +115,8 @@ class _EditProductPageState extends State<EditProductPage> {
                   TextFormField(
                     initialValue: _name,
                     textCapitalization: TextCapitalization.words,
-                    validator: AppValidators.required(context.trOnce('name_required')),
+                    validator:
+                        AppValidators.required(context.trOnce('name_required')),
                     onSaved: (value) => _name = value!,
                   ),
                   const SizedBox(height: 24),
@@ -147,7 +149,8 @@ class _EditProductPageState extends State<EditProductPage> {
                     decoration: InputDecoration(
                       hintText: context.tr('stock_hint'),
                     ),
-                    validator: AppValidators.required(context.trOnce('stock_required')),
+                    validator: AppValidators.required(
+                        context.trOnce('stock_required')),
                     onSaved: (value) =>
                         _stock = int.tryParse(value ?? '0') ?? 0,
                   ),
@@ -159,17 +162,10 @@ class _EditProductPageState extends State<EditProductPage> {
                       hintText: context.tr('unit_hint'),
                     ),
                     items: [
-                      DropdownMenuItem(value: null, child: Text(context.tr('unit_none'))),
-                      DropdownMenuItem(value: 'pcs', child: Text(context.tr('unit_pcs'))),
-                      DropdownMenuItem(value: 'kg', child: Text(context.tr('unit_kg'))),
-                      DropdownMenuItem(value: 'g', child: Text(context.tr('unit_g'))),
-                      DropdownMenuItem(value: 'ltr', child: Text(context.tr('unit_ltr'))),
-                      DropdownMenuItem(value: 'ml', child: Text(context.tr('unit_ml'))),
-                      DropdownMenuItem(value: 'dozen', child: Text(context.tr('unit_dozen'))),
-                      DropdownMenuItem(value: 'box', child: Text(context.tr('unit_box'))),
-                      DropdownMenuItem(value: 'pack', child: Text(context.tr('unit_pack'))),
-                      DropdownMenuItem(value: 'm', child: Text(context.tr('unit_m'))),
-                      DropdownMenuItem(value: 'ft', child: Text(context.tr('unit_ft'))),
+                      DropdownMenuItem(
+                          value: null, child: Text(context.tr('unit_none'))),
+                      DropdownMenuItem(
+                          value: 'kg', child: Text(context.tr('unit_kg'))),
                     ],
                     onChanged: (v) => setState(() => _unit = v ?? ''),
                   ),
