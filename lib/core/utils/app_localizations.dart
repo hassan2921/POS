@@ -46,12 +46,14 @@ class AppLocalizations {
     'lock_app_description': 'Lock the app with PIN',
     'receipt_settings': 'Receipt Settings',
     'whatsapp_receipts': 'WhatsApp Receipts',
-    'whatsapp_receipts_desc': 'Show WhatsApp sharing options after checkout',
+    'whatsapp_receipts_desc':
+        'Show WhatsApp sharing options after checkout',
     'no_printer_connected': 'No printer connected',
     'connected_to_printer': 'Connected to printer',
     'connected_status': 'CONNECTED',
     'dashboard_description': 'View sales and stock summaries',
-    'khata_description': 'Manage customer credits and ledger (Khata)',
+    'khata_description':
+        'Manage customer credits and ledger (Khata)',
     'scan_to_search': 'Tap the icon to open camera scanner',
     'product_management': 'Product Management',
     'search_or_scan': 'Search or scan barcode',
@@ -87,10 +89,13 @@ class AppLocalizations {
     // ── WhatsApp receipt ──────────────────────────────────────────────
     'send_receipt': 'Send Receipt',
     'whatsapp_number_hint': 'Enter customer\'s WhatsApp number',
-    'whatsapp_country_code_hint': 'Include country code e.g. 923001234567',
+    'whatsapp_country_code_hint':
+        'Include country code e.g. 923001234567',
     'whatsapp_number_empty': 'Please enter a phone number',
-    'whatsapp_number_short': 'Enter a valid number with country code',
-    'whatsapp_not_installed': 'Could not open WhatsApp. Is it installed?',
+    'whatsapp_number_short':
+        'Enter a valid number with country code',
+    'whatsapp_not_installed':
+        'Could not open WhatsApp. Is it installed?',
     'cancel': 'Cancel',
     'send': 'Send',
     'share_receipt': 'Share Receipt',
@@ -177,7 +182,8 @@ class AppLocalizations {
     'save_to_udhaar_title': 'Save to Udhaar',
     'udhaar_sheet_desc':
         'Select customer — sale will be confirmed and Rs. {amount} added to their khata.',
-    'no_customers_khata': 'No customers yet. Add one from Khata.',
+    'no_customers_khata':
+        'No customers yet. Add one from Khata.',
     'select_customer_first': 'Select a customer first',
     'save_to_name_khata': "Save to {name}'s Khata",
     'udhaar_saved_msg': "Rs. {amount} added to {name}'s khata",
@@ -214,7 +220,8 @@ class AppLocalizations {
     'unsynced_badge': 'UNSYNCED',
     // ── Shop details page ─────────────────────────────────────────────
     'general_info': 'General Information',
-    'general_info_desc': 'These details will appear on your digital and printed receipts.',
+    'general_info_desc':
+        'These details will appear on your digital and printed receipts.',
     'shop_name': 'Shop Name',
     'shop_name_hint': 'e.g. Hassan General Store',
     'address_line_1': 'Address Line 1',
@@ -226,7 +233,8 @@ class AppLocalizations {
     'max_60_chars': 'Max 60 chars',
     'footer_hint': 'Thank you, Visit again!',
     'payment_methods': 'Payment Methods',
-    'payment_methods_desc': 'Add numbers for methods you accept. Leave blank to hide on checkout.',
+    'payment_methods_desc':
+        'Add numbers for methods you accept. Leave blank to hide on checkout.',
     'jazzcash_number': 'JazzCash Number',
     'easypaisa_number': 'Easypaisa Number',
     'nayapay_number': 'Nayapay Number',
@@ -242,7 +250,8 @@ class AppLocalizations {
     'barcode': 'Barcode',
     'scan_or_enter_barcode': 'Scan or enter barcode',
     'barcode_required': 'Please enter a barcode',
-    'barcode_exists': 'Product with barcode "{barcode}" already exists!',
+    'barcode_exists':
+        'Product with barcode "{barcode}" already exists!',
     'product_name_hint': 'e.g. Basmati Rice',
     'name_required': 'Please enter a name',
     'price_required': 'Please enter a price',
@@ -262,7 +271,22 @@ class AppLocalizations {
     'filter_low_stock': 'Filter low',
     'no_products_match': 'No products match your search.',
     'delete_product': 'Delete Product',
-    'delete_product_confirm': 'Are you sure you want to delete {name}?',
+    'delete_product_confirm':
+        'Are you sure you want to delete {name}?',
+    // ── Import CSV ────────────────────────────────────────────────────
+    'import_csv_title': 'Import from CSV',
+    'import_csv_subtitle': 'Add multiple products at once',
+    'import_csv_unit_note':
+        'Unit column is optional — leave blank if not applicable.',
+    'choose_csv_file': 'Choose CSV File',
+    'csv_col_barcode': 'Barcode',
+    'csv_col_name': 'Name',
+    'csv_col_price': 'Price',
+    'csv_col_stock': 'Stock',
+    'csv_col_unit': 'Unit*',
+    'csv_empty': 'The selected file is empty.',
+    'csv_read_error':
+        'Could not read the file. Please check the format.',
   };
 
   static const Map<String, String> _ur = {
@@ -281,7 +305,8 @@ class AppLocalizations {
     'scan_barcode': 'بارکوڈ اسکین کریں',
     'align_barcode': 'بارکوڈ کو فریم میں رکھیں',
     'camera_off_title': 'کیمرہ بند ہے',
-    'camera_off_subtitle': 'بارکوڈ اسکین کرنے کے لیے اپنا کیمرہ آن کریں۔',
+    'camera_off_subtitle':
+        'بارکوڈ اسکین کرنے کے لیے اپنا کیمرہ آن کریں۔',
     'turn_on_camera': 'کیمرہ آن کریں',
     'review_order': 'آرڈر چیک کریں',
     'confirm_order': 'آرڈر کی تصدیق کریں',
@@ -307,16 +332,20 @@ class AppLocalizations {
     'lock_app_description': 'پن کے ذریعے ایپ کو لاک کریں',
     'receipt_settings': 'رسید کی ترتیبات',
     'whatsapp_receipts': 'واٹس ایپ رسیدیں',
-    'whatsapp_receipts_desc': 'چیک آؤٹ کے بعد واٹس ایپ شیئرنگ کے اختیارات دکھائیں',
+    'whatsapp_receipts_desc':
+        'چیک آؤٹ کے بعد واٹس ایپ شیئرنگ کے اختیارات دکھائیں',
     'no_printer_connected': 'کوئی پرنٹر منسلک نہیں',
     'connected_to_printer': 'پرنٹر سے منسلک',
     'connected_status': 'کنیکٹڈ',
     'dashboard_description': 'فروخت اور اسٹاک کا خلاصہ دیکھیں',
-    'khata_description': 'گاہکوں کے ادھار اور کھاتہ کا انتظام کریں',
-    'scan_to_search': 'کیمرہ اسکین کھولنے کے لیے آئیکن پر ٹیپ کریں',
+    'khata_description':
+        'گاہکوں کے ادھار اور کھاتہ کا انتظام کریں',
+    'scan_to_search':
+        'کیمرہ اسکین کھولنے کے لیے آئیکن پر ٹیپ کریں',
     'product_management': 'پروڈکٹ مینجمنٹ',
     'search_or_scan': 'بارکوڈ تلاش کریں یا اسکین کریں',
-    'tap_scanner': 'کیمرہ اسکین کھولنے کے لیے آئیکن پر ٹیپ کریں',
+    'tap_scanner':
+        'کیمرہ اسکین کھولنے کے لیے آئیکن پر ٹیپ کریں',
     'scanned_items': 'سکین کی گئی اشیاء',
     'items_total': 'اشیاء کل',
     'total_price': 'کل قیمت',
@@ -326,7 +355,8 @@ class AppLocalizations {
     'product_name': 'پروڈکٹ کا نام',
     'price': 'قیمت',
     'total': 'کل',
-    'order_confirmed_stock': 'آرڈر کی تصدیق ہوگئی! اسٹاک اپ ڈیٹ ہوگیا۔',
+    'order_confirmed_stock':
+        'آرڈر کی تصدیق ہوگئی! اسٹاک اپ ڈیٹ ہوگیا۔',
     'printed_successfully': 'کامیابی سے پرنٹ ہوچکا ہے!',
     'welcome_back': 'خوش آمدید',
     'create_pin': '4 ہندسے کا پن بنائیں',
@@ -348,10 +378,13 @@ class AppLocalizations {
     // ── WhatsApp receipt ──────────────────────────────────────────────
     'send_receipt': 'رسید بھیجیں',
     'whatsapp_number_hint': 'گاہک کا واٹس ایپ نمبر درج کریں',
-    'whatsapp_country_code_hint': 'کنٹری کوڈ شامل کریں مثلاً 923001234567',
+    'whatsapp_country_code_hint':
+        'کنٹری کوڈ شامل کریں مثلاً 923001234567',
     'whatsapp_number_empty': 'براہ کرم فون نمبر درج کریں',
-    'whatsapp_number_short': 'کنٹری کوڈ کے ساتھ درست نمبر درج کریں',
-    'whatsapp_not_installed': 'واٹس ایپ نہیں کھل سکا۔ کیا یہ انسٹال ہے؟',
+    'whatsapp_number_short':
+        'کنٹری کوڈ کے ساتھ درست نمبر درج کریں',
+    'whatsapp_not_installed':
+        'واٹس ایپ نہیں کھل سکا۔ کیا یہ انسٹال ہے؟',
     'cancel': 'منسوخ',
     'send': 'بھیجیں',
     'share_receipt': 'رسید شیئر کریں',
@@ -438,10 +471,12 @@ class AppLocalizations {
     'save_to_udhaar_title': 'ادھار میں محفوظ کریں',
     'udhaar_sheet_desc':
         'گاہک منتخب کریں — آرڈر کی تصدیق ہوگی اور روپے {amount} ان کے کھاتے میں شامل ہوں گے۔',
-    'no_customers_khata': 'ابھی تک کوئی گاہک نہیں۔ کھاتے سے شامل کریں۔',
+    'no_customers_khata':
+        'ابھی تک کوئی گاہک نہیں۔ کھاتے سے شامل کریں۔',
     'select_customer_first': 'پہلے گاہک منتخب کریں',
     'save_to_name_khata': '{name} کے کھاتے میں محفوظ کریں',
-    'udhaar_saved_msg': 'روپے {amount} {name} کے کھاتے میں شامل ہوگئے',
+    'udhaar_saved_msg':
+        'روپے {amount} {name} کے کھاتے میں شامل ہوگئے',
     'low_stock_warning': '{n} آئٹمز کا اسٹاک کم ہے',
     // ── Advance / overpayment ─────────────────────────────────────────
     'advance': 'پیشگی',
@@ -475,7 +510,8 @@ class AppLocalizations {
     'unsynced_badge': 'غیر ہم آہنگ',
     // ── Shop details page ─────────────────────────────────────────────
     'general_info': 'عمومی معلومات',
-    'general_info_desc': 'یہ تفصیلات آپ کی ڈیجیٹل اور پرنٹ شدہ رسیدوں پر ظاہر ہوں گی۔',
+    'general_info_desc':
+        'یہ تفصیلات آپ کی ڈیجیٹل اور پرنٹ شدہ رسیدوں پر ظاہر ہوں گی۔',
     'shop_name': 'دکان کا نام',
     'shop_name_hint': 'مثلاً حسن جنرل اسٹور',
     'address_line_1': 'پتہ سطر 1',
@@ -487,7 +523,8 @@ class AppLocalizations {
     'max_60_chars': 'زیادہ سے زیادہ 60 حروف',
     'footer_hint': 'شکریہ، دوبارہ تشریف لائیں!',
     'payment_methods': 'ادائیگی کے طریقے',
-    'payment_methods_desc': 'قبول کیے جانے والے طریقوں کے نمبر شامل کریں۔ خالی چھوڑیں تو چیک آؤٹ پر نظر نہیں آئے گا۔',
+    'payment_methods_desc':
+        'قبول کیے جانے والے طریقوں کے نمبر شامل کریں۔ خالی چھوڑیں تو چیک آؤٹ پر نظر نہیں آئے گا۔',
     'jazzcash_number': 'جیز کیش نمبر',
     'easypaisa_number': 'ایزی پیسہ نمبر',
     'nayapay_number': 'نیا پے نمبر',
@@ -524,6 +561,19 @@ class AppLocalizations {
     'no_products_match': 'کوئی پروڈکٹ نہیں ملی۔',
     'delete_product': 'پروڈکٹ حذف کریں',
     'delete_product_confirm': 'کیا آپ {name} کو حذف کرنا چاہتے ہیں؟',
+    // ── Import CSV ────────────────────────────────────────────────────
+    'import_csv_title': 'CSV سے درآمد کریں',
+    'import_csv_subtitle': 'ایک ساتھ کئی مصنوعات شامل کریں',
+    'import_csv_unit_note':
+        'اکائی کالم اختیاری ہے — اگر لاگو نہ ہو تو خالی چھوڑیں۔',
+    'choose_csv_file': 'CSV فائل منتخب کریں',
+    'csv_col_barcode': 'بارکوڈ',
+    'csv_col_name': 'نام',
+    'csv_col_price': 'قیمت',
+    'csv_col_stock': 'اسٹاک',
+    'csv_col_unit': 'اکائی*',
+    'csv_empty': 'منتخب فائل خالی ہے۔',
+    'csv_read_error': 'فائل نہیں پڑھی جا سکی۔ فارمیٹ چیک کریں۔',
   };
 
   static String translate(BuildContext context, String key,
@@ -531,28 +581,25 @@ class AppLocalizations {
     final language = listen
         ? context.watch<LanguageCubit>().state
         : context.read<LanguageCubit>().state;
-    return (language == AppLanguage.urdu ? _ur : _en)[key] ?? _en[key] ?? key;
+    return (language == AppLanguage.urdu ? _ur : _en)[key] ??
+        _en[key] ??
+        key;
   }
 }
 
 extension TranslateExtension on BuildContext {
-  /// Use inside build() — watches for language changes and rebuilds.
   String tr(String key) => AppLocalizations.translate(this, key);
-
-  /// Use inside listeners, onPressed, callbacks — reads once, no rebuild.
   String trOnce(String key) =>
       AppLocalizations.translate(this, key, listen: false);
-
-  /// Substitutes named placeholders in a single regex pass so user-supplied
-  /// values cannot trigger secondary substitutions. Example:
-  ///   context.trWith('delete_customer_confirm', {'name': customer.name})
   String trWith(String key, Map<String, String> params) {
-    final text = AppLocalizations.translate(this, key, listen: false);
+    final text =
+        AppLocalizations.translate(this, key, listen: false);
     return text.replaceAllMapped(
       RegExp(r'\{(\w+)\}'),
       (m) => params[m.group(1)] ?? m.group(0)!,
     );
   }
 
-  bool get isUrdu => watch<LanguageCubit>().state == AppLanguage.urdu;
+  bool get isUrdu =>
+      watch<LanguageCubit>().state == AppLanguage.urdu;
 }

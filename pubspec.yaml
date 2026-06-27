@@ -15,7 +15,9 @@ dependencies:
   flutter_bloc: ^8.1.5
   get_it: ^7.6.7
   equatable: ^2.0.5
-  
+  # File Handling
+  file_picker: ^8.0.0
+  csv: ^6.0.0
   # Functional Programming
   fpdart: ^1.1.0
   #whatsapp sharing
