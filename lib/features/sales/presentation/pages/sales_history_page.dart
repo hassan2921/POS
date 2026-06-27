@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../bloc/sales_bloc.dart';
 import '../../domain/entities/sale.dart';
+import '../../../../core/utils/app_localizations.dart';
 
 class SalesHistoryPage extends StatefulWidget {
   const SalesHistoryPage({super.key});
@@ -28,8 +29,8 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
               size: 28, color: Theme.of(context).primaryColor),
           onPressed: () => context.pop(),
         ),
-        title: const Text('Sales History',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(context.tr('sales_history'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
       ),
       body: BlocBuilder<SalesBloc, SalesState>(
@@ -39,15 +40,15 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
           }
 
           if (state.sales.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.receipt_long_outlined,
+                  const Icon(Icons.receipt_long_outlined,
                       size: 72, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('No sales yet',
-                      style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  Text(context.tr('no_sales'),
+                      style: const TextStyle(fontSize: 16, color: Colors.grey)),
                 ],
               ),
             );
@@ -97,15 +98,15 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _summaryItem('Total Sales', '${state.sales.length}', Icons.receipt),
+          _summaryItem(context.tr('total_sales'), '${state.sales.length}', Icons.receipt),
           Container(width: 1, height: 40, color: Colors.white30),
           _summaryItem(
-              'Total Revenue',
+              context.tr('total_revenue'),
               'Rs. ${state.totalRevenue.toStringAsFixed(2)}',
               Icons.payments_outlined),
           Container(width: 1, height: 40, color: Colors.white30),
           _summaryItem(
-            'Unsynced',
+            context.tr('unsynced_label'),
             '${state.sales.where((s) => !s.synced).length}',
             Icons.cloud_off,
           ),
@@ -177,7 +178,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.orange[200]!),
                   ),
-                  child: Text('UNSYNCED',
+                  child: Text(context.tr('unsynced_badge'),
                       style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
@@ -192,7 +193,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.green[200]!),
                   ),
-                  child: Text('SYNCED',
+                  child: Text(context.tr('synced_badge'),
                       style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
@@ -204,29 +205,29 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
             const Divider(),
             // Items table
             Row(
-              children: const [
+              children: [
                 Expanded(
                     flex: 3,
-                    child: Text('ITEM',
-                        style: TextStyle(
+                    child: Text(context.tr('receipt_item_header'),
+                        style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Colors.grey,
                             letterSpacing: 1))),
                 Expanded(
                     flex: 1,
-                    child: Text('QTY',
+                    child: Text(context.tr('receipt_qty_header'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Colors.grey,
                             letterSpacing: 1))),
                 Expanded(
                     flex: 2,
-                    child: Text('TOTAL',
+                    child: Text(context.tr('receipt_total_header'),
                         textAlign: TextAlign.right,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Colors.grey,
@@ -260,8 +261,8 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Text('TOTAL  ',
-                    style: TextStyle(
+                Text('${context.tr('receipt_grand_total')}  ',
+                    style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.grey,
                         fontSize: 12,

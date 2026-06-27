@@ -5,6 +5,7 @@ import '../bloc/product_bloc.dart';
 import '../../domain/entities/product.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_validators.dart';
+import '../../../../core/utils/app_localizations.dart';
 
 /// Products with stock at or below this threshold show a low stock badge.
 const int kLowStockThreshold = 5;
@@ -56,8 +57,8 @@ class _ProductListPageState extends State<ProductListPage> {
               size: 28, color: Theme.of(context).primaryColor),
           onPressed: () => context.pop(),
         ),
-        title: const Text('Product Management',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(context.tr('product_management'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
       ),
       body: Column(
@@ -83,12 +84,12 @@ class _ProductListPageState extends State<ProductListPage> {
                             controller: _searchController,
                             textCapitalization: TextCapitalization.words,
                             decoration: InputDecoration(
-                              hintText: 'Search or scan barcode',
+                              hintText: context.tr('search_or_scan'),
                               prefixIcon:
                                   Icon(Icons.search, color: Colors.grey[400]),
                             ),
                             validator: AppValidators.required(
-                                'Please enter a barcode'),
+                                context.trOnce('barcode_required')),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -108,9 +109,9 @@ class _ProductListPageState extends State<ProductListPage> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    const Text('Tap the icon to open camera scanner',
+                    Text(context.tr('tap_scanner'),
                         style:
-                            TextStyle(fontSize: 12, color: Color(0xFF4C669A))),
+                            const TextStyle(fontSize: 12, color: Color(0xFF4C669A))),
 
                     // Stock alert chips
                     if (lowStockCount > 0 || outOfStockCount > 0) ...[
@@ -119,7 +120,7 @@ class _ProductListPageState extends State<ProductListPage> {
                         children: [
                           if (outOfStockCount > 0)
                             _stockChip(
-                              label: '$outOfStockCount Out of stock',
+                              label: context.tr('out_of_stock_count').replaceAll('{n}', '$outOfStockCount'),
                               color: Colors.red,
                               icon: Icons.remove_shopping_cart,
                             ),
@@ -127,7 +128,7 @@ class _ProductListPageState extends State<ProductListPage> {
                             const SizedBox(width: 8),
                           if (lowStockCount > 0)
                             _stockChip(
-                              label: '$lowStockCount Low stock',
+                              label: context.tr('low_stock_count').replaceAll('{n}', '$lowStockCount'),
                               color: Colors.orange,
                               icon: Icons.warning_amber_rounded,
                             ),
@@ -147,7 +148,9 @@ class _ProductListPageState extends State<ProductListPage> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                _showLowStockOnly ? 'All' : 'Filter low',
+                                _showLowStockOnly
+                                    ? context.tr('filter_all')
+                                    : context.tr('filter_low_stock'),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -183,8 +186,7 @@ class _ProductListPageState extends State<ProductListPage> {
                 }
 
                 if (state.products.isEmpty) {
-                  return const Center(
-                      child: Text('No products found. Add some!'));
+                  return Center(child: Text(context.tr('no_products')));
                 }
 
                 var filtered = state.products.where((p) {
@@ -197,8 +199,7 @@ class _ProductListPageState extends State<ProductListPage> {
                 }).toList();
 
                 if (filtered.isEmpty) {
-                  return const Center(
-                      child: Text('No products match your search.'));
+                  return Center(child: Text(context.tr('no_products_match')));
                 }
 
                 return ListView.separated(
@@ -275,7 +276,7 @@ class _ProductListPageState extends State<ProductListPage> {
                                                 : Colors.grey[400]),
                                     const SizedBox(width: 3),
                                     Text(
-                                      'Stock: ${product.stock}',
+                                      'Stock: ${product.stock}${product.unit.isNotEmpty ? ' ${product.unit}' : ''}',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: isOutOfStock
@@ -389,18 +390,18 @@ class _ProductListPageState extends State<ProductListPage> {
     showDialog(
       context: context,
       builder: (innerContext) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete ${product.name}?'),
+        title: Text(context.tr('delete_product')),
+        content: Text(context.tr('delete_product_confirm').replaceAll('{name}', product.name)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(innerContext),
-              child: const Text('Cancel')),
+              child: Text(context.tr('cancel'))),
           TextButton(
             onPressed: () {
               context.read<ProductBloc>().add(DeleteProduct(product.id));
               Navigator.pop(innerContext);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(context.tr('delete'), style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),

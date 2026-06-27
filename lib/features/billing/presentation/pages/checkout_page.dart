@@ -352,8 +352,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (address.isNotEmpty) sb.writeln('📍 $address');
     sb.writeln('');
     for (final item in billingState.cartItems) {
-      sb.writeln(
-          '• ${item.product.name} ×${item.quantity}  Rs. ${item.total.toStringAsFixed(2)}');
+      final qtyLabel = item.product.unit.isNotEmpty
+          ? '${item.quantity} ${item.product.unit}'
+          : '×${item.quantity}';
+      sb.writeln('• ${item.product.name} $qtyLabel  Rs. ${item.total.toStringAsFixed(2)}');
     }
     sb.writeln('');
     sb.writeln('━━━━━━━━━━━━━━━━');
@@ -607,7 +609,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                             .map((item) => TableRow(
                                                   children: [
                                                     _dCell(
-                                                        '${item.quantity} x ${item.product.name}',
+                                                        '${item.quantity}${item.product.unit.isNotEmpty ? ' ${item.product.unit}' : ''} x ${item.product.name}',
                                                         TextAlign.left),
                                                     _dCell(
                                                         'Rs. ${item.product.price.toStringAsFixed(2)}',

@@ -152,7 +152,15 @@ class ReceiptImageWidget extends StatelessWidget {
                                   fontSize: 13, fontWeight: FontWeight.w500),
                             ),
                           ),
-                          Expanded(flex: 1, child: _dataCell('${item.quantity}', TextAlign.center)),
+                          Expanded(
+                            flex: 1,
+                            child: _dataCell(
+                              item.product.unit.isNotEmpty
+                                  ? '${item.quantity} ${item.product.unit}'
+                                  : '${item.quantity}',
+                              TextAlign.center,
+                            ),
+                          ),
                           Expanded(
                               flex: 2,
                               child: _dataCell(

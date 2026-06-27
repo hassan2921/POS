@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_localizations.dart';
 import '../bloc/dashboard_bloc.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -31,8 +32,8 @@ class _DashboardPageState extends State<DashboardPage> {
               size: 28, color: Theme.of(context).primaryColor),
           onPressed: () => context.pop(),
         ),
-        title: const Text('Dashboard',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(context.tr('dashboard'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
       ),
       body: BlocBuilder<DashboardBloc, DashboardState>(
@@ -46,7 +47,7 @@ class _DashboardPageState extends State<DashboardPage> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
-                  state.error ?? 'Unable to load dashboard',
+                  state.error ?? context.tr('dashboard_error'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 16, color: Colors.red),
                 ),
@@ -62,7 +63,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text('Overview',
+                  child: Text(context.tr('overview'),
                       style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 12,
@@ -77,7 +78,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text('Period',
+                  child: Text(context.tr('period'),
                       style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 12,
@@ -92,7 +93,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text('Daily revenue',
+                  child: Text(context.tr('daily_revenue'),
                       style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 12,
@@ -107,7 +108,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text('Top products',
+                  child: Text(context.tr('top_products'),
                       style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 12,
@@ -122,7 +123,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text('Stock alerts',
+                  child: Text(context.tr('stock_alerts'),
                       style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 12,
@@ -148,22 +149,22 @@ class _DashboardPageState extends State<DashboardPage> {
       spacing: 12,
       children: [
         _buildSummaryCard(
-          label: 'Revenue',
+          label: context.tr('revenue'),
           value: _currency.format(state.totalRevenue),
           icon: Icons.payments_outlined,
         ),
         _buildSummaryCard(
-          label: 'Orders',
+          label: context.tr('orders'),
           value: '${state.totalOrders}',
           icon: Icons.receipt_long,
         ),
         _buildSummaryCard(
-          label: 'Avg order',
+          label: context.tr('avg_order'),
           value: _currency.format(state.averageOrderValue),
           icon: Icons.show_chart,
         ),
         _buildSummaryCard(
-          label: 'Items',
+          label: context.tr('items'),
           value: '${state.totalItemsSold}',
           icon: Icons.inventory_2,
         ),
@@ -229,7 +230,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildRevenueList(DashboardState state) {
     if (state.dailyRevenue.isEmpty) {
-      return _buildEmptyState('No revenue data for selected period');
+      return _buildEmptyState(context.tr('no_revenue_data'));
     }
 
     return Column(
@@ -286,7 +287,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildTopProducts(DashboardState state) {
     if (state.topProducts.isEmpty) {
-      return _buildEmptyState('No top products yet');
+      return _buildEmptyState(context.tr('no_top_products'));
     }
 
     return Column(
@@ -329,7 +330,7 @@ class _DashboardPageState extends State<DashboardPage> {
       children: [
         Expanded(
           child: _buildAlertCard(
-            label: 'Low stock',
+            label: context.tr('low_stock'),
             value: '${state.lowStockCount}',
             color: Colors.orange,
           ),
@@ -337,7 +338,7 @@ class _DashboardPageState extends State<DashboardPage> {
         const SizedBox(width: 12),
         Expanded(
           child: _buildAlertCard(
-            label: 'Out of stock',
+            label: context.tr('out_of_stock'),
             value: '${state.outOfStockCount}',
             color: Colors.red,
           ),

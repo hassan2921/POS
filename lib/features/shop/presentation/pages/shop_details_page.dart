@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../domain/entities/shop.dart';
 import '../bloc/shop_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/app_localizations.dart';
 import '../../../../core/utils/app_validators.dart';
 
 class ShopDetailsPage extends StatefulWidget {
@@ -109,13 +110,16 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shop Details'),
+        title: Text(context.tr('shop_details')),
       ),
       body: BlocConsumer<ShopBloc, ShopState>(
         listener: (context, state) {
           if (state is ShopLoaded) {
             _updateControllers(state.shop);
           } else if (state is ShopOperationSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(context.trOnce('shop_saved')),
+                backgroundColor: Colors.green));
             context.pop();
           } else if (state is ShopError) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -137,7 +141,7 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // ── General Info ───────────────────────────────────
-                  Text('General Information',
+                  Text(context.tr('general_info'),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -146,55 +150,55 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                       )),
                   const SizedBox(height: 5),
                   Text(
-                    'These details will appear on your digital and printed receipts.',
+                    context.tr('general_info_desc'),
                     style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                   const SizedBox(height: 20),
 
-                  const InputLabel(text: 'Shop Name'),
+                  InputLabel(text: context.tr('shop_name')),
                   _buildTextField(
                     controller: _nameController,
-                    hint: 'e.g. Hassan General Store',
-                    validator: AppValidators.required('Required'),
+                    hint: context.tr('shop_name_hint'),
+                    validator: AppValidators.required(context.trOnce('required_field')),
                   ),
                   const SizedBox(height: 15),
 
-                  const InputLabel(text: 'Address Line 1'),
+                  InputLabel(text: context.tr('address_line_1')),
                   _buildTextField(
                     controller: _address1Controller,
-                    hint: 'Street / Area',
-                    validator: AppValidators.required('Required'),
+                    hint: context.tr('address_line_1_hint'),
+                    validator: AppValidators.required(context.trOnce('required_field')),
                   ),
                   const SizedBox(height: 15),
 
-                  const InputLabel(text: 'Address Line 2 (Optional)'),
+                  InputLabel(text: context.tr('address_line_2')),
                   _buildTextField(
                     controller: _address2Controller,
-                    hint: 'City / Postal code',
+                    hint: context.tr('address_line_2_hint'),
                   ),
                   const SizedBox(height: 15),
 
-                  const InputLabel(text: 'Phone Number'),
+                  InputLabel(text: context.tr('phone_number')),
                   _buildTextField(
                     controller: _phoneController,
                     hint: '+92 300 1234567',
                     keyboardType: TextInputType.phone,
-                    validator: AppValidators.required('Required'),
+                    validator: AppValidators.required(context.trOnce('required_field')),
                   ),
                   const SizedBox(height: 15),
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const InputLabel(text: 'Receipt Footer Text'),
-                      Text('Max 60 chars',
+                      InputLabel(text: context.tr('footer_text_label')),
+                      Text(context.tr('max_60_chars'),
                           style: TextStyle(
                               fontSize: 11, color: Colors.grey[400])),
                     ],
                   ),
                   _buildTextField(
                     controller: _footerController,
-                    hint: 'Thank you, Visit again!',
+                    hint: context.tr('footer_hint'),
                     maxLines: 2,
                     maxLength: 60,
                   ),
@@ -202,7 +206,7 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                   const SizedBox(height: 32),
 
                   // ── Payment Methods ────────────────────────────────
-                  Text('Payment Methods',
+                  Text(context.tr('payment_methods'),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -211,7 +215,7 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                       )),
                   const SizedBox(height: 5),
                   Text(
-                    'Add numbers for methods you accept. Leave blank to hide on checkout.',
+                    context.tr('payment_methods_desc'),
                     style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                   const SizedBox(height: 20),
@@ -222,7 +226,7 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                       label: 'JazzCash',
                       icon: Icons.phone_android),
                   const SizedBox(height: 10),
-                  const InputLabel(text: 'JazzCash Number'),
+                  InputLabel(text: context.tr('jazzcash_number')),
                   _buildTextField(
                     controller: _jazzCashController,
                     hint: '03001234567',
@@ -236,7 +240,7 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                       label: 'Easypaisa',
                       icon: Icons.phone_android),
                   const SizedBox(height: 10),
-                  const InputLabel(text: 'Easypaisa Number'),
+                  InputLabel(text: context.tr('easypaisa_number')),
                   _buildTextField(
                     controller: _easypaisaController,
                     hint: '03001234567',
@@ -250,7 +254,7 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                       label: 'Nayapay',
                       icon: Icons.phone_android),
                   const SizedBox(height: 10),
-                  const InputLabel(text: 'Nayapay Number'),
+                  InputLabel(text: context.tr('nayapay_number')),
                   _buildTextField(
                     controller: _nayapayController,
                     hint: '03001234567',
@@ -261,25 +265,25 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                   // Bank Transfer
                   _paymentHeader(
                       color: const Color(0xFF1565C0),
-                      label: 'Bank Transfer',
+                      label: context.tr('bank_transfer'),
                       icon: Icons.account_balance),
                   const SizedBox(height: 10),
 
-                  const InputLabel(text: 'Bank Name'),
+                  InputLabel(text: context.tr('bank_name')),
                   _buildTextField(
                     controller: _bankNameController,
-                    hint: 'e.g. HBL / MCB / UBL / Meezan',
+                    hint: context.tr('bank_name_hint'),
                   ),
                   const SizedBox(height: 12),
 
-                  const InputLabel(text: 'Account Title'),
+                  InputLabel(text: context.tr('account_title_label')),
                   _buildTextField(
                     controller: _bankTitleController,
-                    hint: 'e.g. Muhammad Hassan',
+                    hint: context.tr('account_title_hint'),
                   ),
                   const SizedBox(height: 12),
 
-                  const InputLabel(text: 'Account Number'),
+                  InputLabel(text: context.tr('account_number')),
                   _buildTextField(
                     controller: _bankAccountController,
                     hint: '01234567890123',
@@ -287,7 +291,7 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  const InputLabel(text: 'IBAN (Optional)'),
+                  InputLabel(text: context.tr('iban_optional')),
                   _buildTextField(
                     controller: _bankIbanController,
                     hint: 'PK36HABB0000001234567890',
@@ -301,7 +305,7 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
       bottomNavigationBar: PrimaryButton(
         onPressed: _saveShop,
         icon: Icons.save,
-        label: 'Save Details',
+        label: context.tr('save_details'),
       ),
     );
   }

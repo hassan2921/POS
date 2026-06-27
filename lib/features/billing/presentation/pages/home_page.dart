@@ -517,12 +517,30 @@ class _HomePageState extends State<HomePage> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Rs. ${item.product.price.toStringAsFixed(2)}',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.grey[600]),
+                Row(
+                  children: [
+                    Text(
+                      'Rs. ${item.product.price.toStringAsFixed(2)}',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.grey[600]),
+                    ),
+                    if (item.product.unit.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.product.unit,
+                          style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 if (item.product.stock > 0) ...[
                   const SizedBox(height: 4),
