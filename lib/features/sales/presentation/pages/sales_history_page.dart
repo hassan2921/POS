@@ -102,7 +102,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
           _summaryItem(
               'Total Revenue',
               'Rs. ${state.totalRevenue.toStringAsFixed(2)}',
-              Icons.currency_rupee),
+              Icons.payments_outlined),
           Container(width: 1, height: 40, color: Colors.white30),
           _summaryItem(
             'Unsynced',

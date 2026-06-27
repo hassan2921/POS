@@ -62,11 +62,6 @@ class _ChangePinPageState extends State<ChangePinPage> {
         if (_enteredPin == _newPin) {
           await PinService.setPin(_enteredPin);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('PIN changed successfully'),
-                  backgroundColor: Colors.green),
-            );
             context.pop();
           }
         } else {

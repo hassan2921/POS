@@ -367,12 +367,15 @@ class KhataPage extends StatelessWidget {
                 controller: phoneCtrl,
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
-                  labelText: context.tr('phone_optional'),
+                  labelText: context.tr('phone_label'),
                   hintText: context.tr('phone_hint'),
                   prefixIcon: const Icon(Icons.phone_outlined),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? context.trOnce('phone_required')
+                    : null,
               ),
             ],
           ),

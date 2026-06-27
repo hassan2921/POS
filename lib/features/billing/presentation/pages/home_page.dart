@@ -88,13 +88,20 @@ class _HomePageState extends State<HomePage> {
             previous.error != current.error && current.error != null,
         listener: (context, state) {
           if (state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.error!),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            final errorMsg = state.error!;
+            if (errorMsg.startsWith('Product not found: ')) {
+              final barcode = errorMsg.replaceFirst('Product not found: ', '');
+              context.read<BillingBloc>().add(ClearErrorEvent());
+              _showAddProductDialog(context, barcode);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(errorMsg),
+                  backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
           }
         },
         child: Stack(
@@ -121,16 +128,23 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomSheet:
           BlocBuilder<BillingBloc, BillingState>(builder: (context, state) {
-        return PrimaryButton(
-          onPressed: state.cartItems.isEmpty
-              ? null
-              : () async {
-                  _scannerController.stop();
-                  await context.push('/home/checkout');
-                  if (_isCameraOn && mounted) _scannerController.start();
-                },
-          icon: Icons.payment,
-          label: context.tr('review_order'),
+        final bottomPadding = MediaQuery.of(context).padding.bottom;
+        return Container(
+          color: Colors.white,
+          padding: EdgeInsets.only(
+            bottom: bottomPadding > 0 ? bottomPadding : 16.0,
+          ),
+          child: PrimaryButton(
+            onPressed: state.cartItems.isEmpty
+                ? null
+                : () async {
+                    _scannerController.stop();
+                    await context.push('/home/checkout');
+                    if (_isCameraOn && mounted) _scannerController.start();
+                  },
+            icon: Icons.payment,
+            label: context.tr('review_order'),
+          ),
         );
       }),
     );
@@ -152,12 +166,8 @@ class _HomePageState extends State<HomePage> {
             top: MediaQuery.of(context).padding.top + 16,
             left: 16,
             child: _buildOverlayButton(
-              icon: Icons.menu_book_rounded,
-              onPressed: () async {
-                _scannerController.stop();
-                await context.push('/khata');
-                if (_isCameraOn && mounted) _scannerController.start();
-              },
+              icon: Icons.edit_note_rounded,
+              onPressed: () => _showManualItemSheet(context),
             ),
           ),
 
@@ -369,50 +379,15 @@ class _HomePageState extends State<HomePage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(context.tr('scanned_items'),
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w600)),
+                        Text(
+                          context.tr('scanned_items'),
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w600),
+                        ),
                         Text('$totalItems ${context.tr('items')}',
                             style: const TextStyle(
                                 fontSize: 12, color: Colors.grey)),
                       ],
-                    ),
-                    // ── Manual item button ──────────────────────────────
-                    Tooltip(
-                      message: context.tr('manual_add_tooltip'),
-                      child: InkWell(
-                        onTap: () => _showManualItemSheet(context),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .primaryColor
-                                .withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Theme.of(context)
-                                  .primaryColor
-                                  .withValues(alpha: 0.25),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.edit_note_rounded,
-                                  size: 18,
-                                  color: Theme.of(context).primaryColor),
-                              const SizedBox(width: 4),
-                              Text(context.tr('manual'),
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context).primaryColor)),
-                            ],
-                          ),
-                        ),
-                      ),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -803,7 +778,59 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // A floating Details/Checkout Button at the very bottom
-  // Added a Stack wrapper below to overlay this button
+  void _showAddProductDialog(BuildContext context, String barcode) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              const SizedBox(width: 8),
+              Text(
+                context.isUrdu ? 'پروڈکٹ نہیں ملی' : 'Product Not Found',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+          content: Text(
+            context.isUrdu
+                ? 'بارکوڈ "$barcode" ڈیٹا بیس میں موجود نہیں ہے۔ کیا آپ اسے نئی پروڈکٹ کے طور پر شامل کرنا چاہتے ہیں؟'
+                : 'Barcode "$barcode" is not in the database. Would you like to add it as a new product?',
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                context.isUrdu ? 'منسوخ کریں' : 'Cancel',
+                style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                _scannerController.stop();
+                await context.push('/products/add?barcode=$barcode');
+                if (_isCameraOn && mounted) _scannerController.start();
+              },
+              child: Text(
+                context.isUrdu ? 'پروڈکٹ شامل کریں' : 'Add to Product',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 

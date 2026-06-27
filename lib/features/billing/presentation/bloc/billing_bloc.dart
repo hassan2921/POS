@@ -31,6 +31,7 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     on<ClearCartEvent>(_onClearCart);
     on<ConfirmOrderEvent>(_onConfirmOrder);
     on<PrintReceiptEvent>(_onPrintReceipt);
+    on<ClearErrorEvent>((event, emit) => emit(state.copyWith(clearError: true)));
   }
 
   Future<void> _onScanBarcode(

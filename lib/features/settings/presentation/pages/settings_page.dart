@@ -11,6 +11,7 @@ import '../bloc/printer_bloc.dart';
 import '../bloc/printer_event.dart';
 import '../bloc/printer_state.dart';
 import '../../../../core/service/pin_service.dart';
+import '../../../../core/data/hive_database.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -20,9 +21,12 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  bool _enableWhatsappReceipts = true;
+
   @override
   void initState() {
     super.initState();
+    _enableWhatsappReceipts = HiveDatabase.settingsBox.get('enable_whatsapp_receipts', defaultValue: true) as bool;
     context.read<PrinterBloc>().add(InitPrinterEvent());
   }
 
@@ -116,6 +120,25 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 24),
 
+            // Receipt Settings
+            _buildSectionHeader(context.tr('receipt_settings')),
+            _buildListGroup(children: [
+              SwitchListTile(
+                title: Text(context.tr('whatsapp_receipts')),
+                subtitle: Text(context.tr('whatsapp_receipts_desc')),
+                value: _enableWhatsappReceipts,
+                onChanged: (val) {
+                  setState(() => _enableWhatsappReceipts = val);
+                  HiveDatabase.settingsBox.put('enable_whatsapp_receipts', val);
+                },
+                activeThumbColor: AppTheme.primaryColor,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              ),
+            ]),
+
+            const SizedBox(height: 24),
+
             // Management
             _buildSectionHeader(context.tr('management')),
             _buildListGroup(children: [
@@ -145,6 +168,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 title: context.tr('sales_history'),
                 subtitle: context.tr('view_sales_transactions'),
                 onTap: () => context.push('/sales'),
+              ),
+              _buildDivider(),
+              _buildListItem(
+                icon: Icons.menu_book_rounded,
+                title: context.tr('khata_title'),
+                subtitle: context.tr('khata_description'),
+                onTap: () => context.push('/khata'),
               ),
             ]),
 
@@ -181,10 +211,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(state.errorMessage!),
                       backgroundColor: Colors.red));
-                } else if (state.status == PrinterStatus.connected) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(context.tr('connected_to_printer')),
-                      backgroundColor: Colors.green));
                 }
               },
               builder: (context, state) {

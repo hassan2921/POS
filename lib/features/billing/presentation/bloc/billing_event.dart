@@ -37,6 +37,8 @@ class UpdateQuantityEvent extends BillingEvent {
 
 class ClearCartEvent extends BillingEvent {}
 
+class ClearErrorEvent extends BillingEvent {}
+
 /// Adds a custom (no-barcode) item directly to the cart.
 /// Used for loose goods sold by weight/piece without a registered product.
 class AddManualItemEvent extends BillingEvent {

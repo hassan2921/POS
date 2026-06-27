@@ -169,12 +169,7 @@ class _ProductListPageState extends State<ProductListPage> {
           Expanded(
             child: BlocConsumer<ProductBloc, ProductState>(
               listener: (context, state) {
-                if (state.status == ProductStatus.success &&
-                    state.message != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(state.message!),
-                      backgroundColor: Colors.green));
-                } else if (state.status == ProductStatus.error &&
+                if (state.status == ProductStatus.error &&
                     state.message != null) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(state.message!),

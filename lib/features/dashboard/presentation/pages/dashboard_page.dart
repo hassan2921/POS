@@ -150,7 +150,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _buildSummaryCard(
           label: 'Revenue',
           value: _currency.format(state.totalRevenue),
-          icon: Icons.currency_rupee,
+          icon: Icons.payments_outlined,
         ),
         _buildSummaryCard(
           label: 'Orders',

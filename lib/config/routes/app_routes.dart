@@ -85,7 +85,10 @@ final router = GoRouter(
       routes: [
         GoRoute(
           path: 'add',
-          builder: (context, state) => const AddProductPage(),
+          builder: (context, state) {
+            final barcode = state.uri.queryParameters['barcode'];
+            return AddProductPage(initialBarcode: barcode);
+          },
         ),
         GoRoute(
           path: 'edit/:id',

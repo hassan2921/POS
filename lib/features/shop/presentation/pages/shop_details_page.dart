@@ -116,9 +116,6 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
           if (state is ShopLoaded) {
             _updateControllers(state.shop);
           } else if (state is ShopOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Shop details saved!'),
-                backgroundColor: Colors.green));
             context.pop();
           } else if (state is ShopError) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(

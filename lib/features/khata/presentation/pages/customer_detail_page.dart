@@ -5,6 +5,7 @@ import '../bloc/khata_bloc.dart';
 import '../../domain/entities/customer.dart';
 import '../../domain/entities/khata_entry.dart';
 import '../../../../core/utils/app_localizations.dart';
+import '../../../../core/service/receipt_share_service.dart';
 
 class CustomerDetailPage extends StatefulWidget {
   final Customer customer;
@@ -74,80 +75,104 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                         offset: Offset(0, 2))
                   ],
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    // Avatar
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .primaryColor
-                            .withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        customer.name.isNotEmpty
-                            ? customer.name[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(customer.name,
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold)),
-                          if (customer.phone.isNotEmpty)
-                            Text(customer.phone,
-                                style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                    // Balance
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    Row(
                       children: [
-                        Text(
-                          'Rs. ${customer.balance.abs().toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: hasBalance
-                                ? Colors.red[700]
-                                : hasAdvance
-                                    ? Colors.blue[700]
-                                    : Colors.green[700],
+                        // Avatar
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .primaryColor
+                                .withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            customer.name.isNotEmpty
+                                ? customer.name[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).primaryColor,
+                            ),
                           ),
                         ),
-                        Text(
-                          hasBalance
-                              ? context.tr('outstanding')
-                              : hasAdvance
-                                  ? context.tr('advance')
-                                  : context.tr('no_udhaar'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: hasBalance
-                                ? Colors.red[400]
-                                : hasAdvance
-                                    ? Colors.blue[400]
-                                    : Colors.green[400],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(customer.name,
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                              if (customer.phone.isNotEmpty)
+                                Text(customer.phone,
+                                    style: TextStyle(
+                                        color: Colors.grey[500],
+                                        fontSize: 13)),
+                            ],
                           ),
+                        ),
+                        // Balance
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'Rs. ${customer.balance.abs().toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: hasBalance
+                                    ? Colors.red[700]
+                                    : hasAdvance
+                                        ? Colors.blue[700]
+                                        : Colors.green[700],
+                              ),
+                            ),
+                            Text(
+                              hasBalance
+                                  ? context.tr('outstanding')
+                                  : hasAdvance
+                                      ? context.tr('advance')
+                                      : context.tr('no_udhaar'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: hasBalance
+                                    ? Colors.red[400]
+                                    : hasAdvance
+                                        ? Colors.blue[400]
+                                        : Colors.green[400],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                    if (hasBalance && customer.phone.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(38),
+                          foregroundColor: const Color(0xFF25D366),
+                          side: const BorderSide(color: Color(0xFF25D366), width: 1.2),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.share, size: 16),
+                        label: Text(
+                          context.isUrdu ? 'واٹس ایپ پر یاد دہانی بھیجیں' : 'Send WhatsApp Reminder',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () => _sendWhatsappReminder(customer),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -200,44 +225,52 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
               ),
             ],
           ),
-          bottomNavigationBar: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                      side: const BorderSide(color: Color(0xFFE57373), width: 1.5),
-                      foregroundColor: const Color(0xFFE57373),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+          bottomNavigationBar: Container(
+            color: Colors.transparent,
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).padding.bottom > 0
+                  ? MediaQuery.of(context).padding.bottom
+                  : 16.0,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                        side: const BorderSide(color: Color(0xFFE57373), width: 1.5),
+                        foregroundColor: const Color(0xFFE57373),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.add, size: 20),
+                      label: Text(context.tr('add_udhaar'),
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.bold)),
+                      onPressed: () => _showAddUdhaarDialog(context, customer),
                     ),
-                    icon: const Icon(Icons.add, size: 20),
-                    label: Text(context.tr('add_udhaar'),
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.bold)),
-                    onPressed: () => _showAddUdhaarDialog(context, customer),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[600],
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(52),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.payments_outlined),
+                      label: Text(context.tr('record_payment'),
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.bold)),
+                      onPressed: () => _showPaymentDialog(context, customer),
                     ),
-                    icon: const Icon(Icons.payments_outlined),
-                    label: Text(context.tr('record_payment'),
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.bold)),
-                    onPressed: () => _showPaymentDialog(context, customer),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -491,5 +524,36 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
         ],
       ),
     );
+  }
+
+  String _sanitizePhoneForWhatsApp(String phone) {
+    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
+    if (digitsOnly.startsWith('03') && digitsOnly.length == 11) {
+      return '92${digitsOnly.substring(1)}';
+    }
+    if (digitsOnly.startsWith('3') && digitsOnly.length == 10) {
+      return '92$digitsOnly';
+    }
+    if (digitsOnly.startsWith('0092') && digitsOnly.length == 14) {
+      return digitsOnly.substring(2);
+    }
+    return digitsOnly;
+  }
+
+  Future<void> _sendWhatsappReminder(Customer customer) async {
+    final outstanding = customer.balance.abs().toStringAsFixed(0);
+    final message = context.isUrdu
+        ? 'محترم ${customer.name}، یہ ایک دوستانہ یاد دہانی ہے کہ آپ کی بقایا رقم $outstanding روپے ہے۔ براہ کرم جلد از جلد ادائیگی کریں۔ شکریہ!'
+        : 'Dear ${customer.name}, this is a friendly reminder that your outstanding balance is Rs. $outstanding. Please clear it at your earliest convenience. Thank you!';
+
+    final formattedPhone = _sanitizePhoneForWhatsApp(customer.phone);
+    final ok = await ReceiptShareService.sendWhatsAppText(
+        phone: formattedPhone, message: message);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(context.isUrdu ? 'واٹس ایپ انسٹال نہیں ہے!' : 'WhatsApp is not installed!'),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 }

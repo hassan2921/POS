@@ -13,6 +13,7 @@ import '../../../dashboard/presentation/bloc/dashboard_bloc.dart';
 import '../bloc/billing_bloc.dart';
 import '../../../../core/widgets/receipt_image_widget.dart';
 import '../../../../core/service/receipt_share_service.dart';
+import '../../../../core/data/hive_database.dart';
 import '../../../khata/presentation/bloc/khata_bloc.dart';
 import '../../../khata/domain/entities/customer.dart';
 
@@ -128,11 +129,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         GestureDetector(
           onTap: () {
             Clipboard.setData(ClipboardData(text: number));
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('$label ${context.trOnce('number_copied')}'),
-              duration: const Duration(seconds: 1),
-              backgroundColor: color,
-            ));
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -218,11 +214,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
               onTap: copyable
                   ? () {
                       Clipboard.setData(ClipboardData(text: value));
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('$label ${context.trOnce('copied')}'),
-                        duration: const Duration(seconds: 1),
-                        backgroundColor: const Color(0xFF1565C0),
-                      ));
                     }
                   : null,
               child: Row(
@@ -371,8 +362,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
     sb.writeln('━━━━━━━━━━━━━━━━');
     if (footer.isNotEmpty) sb.writeln('_${footer}_');
 
+    // Sanitize phone number for international WhatsApp scheme
+    String formattedPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (formattedPhone.startsWith('03') && formattedPhone.length == 11) {
+      formattedPhone = '92${formattedPhone.substring(1)}';
+    } else if (formattedPhone.startsWith('3') && formattedPhone.length == 10) {
+      formattedPhone = '92$formattedPhone';
+    } else if (formattedPhone.startsWith('0092') && formattedPhone.length == 14) {
+      formattedPhone = formattedPhone.substring(2);
+    }
+
     final ok = await ReceiptShareService.sendWhatsAppText(
-        phone: phone, message: sb.toString());
+        phone: formattedPhone, message: sb.toString());
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(context.trOnce('whatsapp_not_installed')),
@@ -494,16 +495,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 !state.printSuccess) {
               context.read<ProductBloc>().add(LoadProducts());
               context.read<DashboardBloc>().add(LoadDashboardEvent());
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(context.trOnce('order_confirmed_stock')),
-                backgroundColor: Colors.green,
-              ));
             }
             if (state.printSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(context.trOnce('printed_successfully')),
-                backgroundColor: Colors.green,
-              ));
               context.read<BillingBloc>().add(ClearCartEvent());
               context.pop();
             }
@@ -762,6 +755,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                         // ── Bottom bar ──────────────────────────────────
                         Container(
+                          padding: EdgeInsets.only(
+                            bottom: MediaQuery.of(context).padding.bottom > 0
+                                ? MediaQuery.of(context).padding.bottom
+                                : 16.0,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.95),
                             borderRadius: const BorderRadius.horizontal(
@@ -846,7 +844,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     label: Text(context.tr('save_to_udhaar_btn')),
                                     style: OutlinedButton.styleFrom(
                                       minimumSize:
-                                          const Size.fromHeight(48),
+                                          const Size.fromHeight(42),
                                       side: const BorderSide(
                                           color: Color(0xFFE57373),
                                           width: 1.5),
@@ -863,28 +861,30 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       const EdgeInsets.fromLTRB(24, 0, 24, 4),
                                   child: Row(
                                     children: [
-                                      Expanded(
-                                        child: OutlinedButton.icon(
-                                          onPressed: () => _showShareOptions(
-                                              billingState, shopState),
-                                          icon:
-                                              const Icon(Icons.share, size: 18),
-                                          label:
-                                              Text(context.tr('share_receipt')),
-                                          style: OutlinedButton.styleFrom(
-                                            side: BorderSide(
-                                                color: Theme.of(context)
-                                                    .primaryColor,
-                                                width: 1.5),
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12)),
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 13),
+                                      if (HiveDatabase.settingsBox.get('enable_whatsapp_receipts', defaultValue: true) as bool) ...[
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            onPressed: () => _showShareOptions(
+                                                billingState, shopState),
+                                            icon:
+                                                const Icon(Icons.share, size: 18),
+                                            label:
+                                                Text(context.tr('share_receipt')),
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(
+                                                  color: Theme.of(context)
+                                                      .primaryColor,
+                                                  width: 1.5),
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12)),
+                                              padding: const EdgeInsets.symmetric(
+                                                  vertical: 10),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 12),
+                                        const SizedBox(width: 12),
+                                      ],
                                       Expanded(
                                         child: OutlinedButton.icon(
                                           onPressed: () {
@@ -902,7 +902,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                                 borderRadius:
                                                     BorderRadius.circular(12)),
                                             padding: const EdgeInsets.symmetric(
-                                                vertical: 13),
+                                                vertical: 10),
                                           ),
                                         ),
                                       ),
@@ -1226,16 +1226,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 note:
                                     'Sale — ${billingState.cartItems.map((i) => i.product.name).join(', ')}',
                               ));
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      context.trOnce('udhaar_saved_msg')
-                                          .replaceAll('{amount}', udhaarAmount.toStringAsFixed(0))
-                                          .replaceAll('{name}', chosenCustomer.name)),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
                             }
                           },
                   ),

@@ -29,48 +29,43 @@ class PrimaryButton extends StatelessWidget {
     final style = ElevatedButton.styleFrom(
       backgroundColor: Theme.of(context).primaryColor,
       foregroundColor: Colors.white,
-      padding: padding,
+      padding: const EdgeInsets.symmetric(vertical: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       elevation: elevation,
       shadowColor: Theme.of(context).primaryColor.withValues(alpha: 0.4),
-      minimumSize: isFullWidth ? const Size.fromHeight(50) : null,
+      minimumSize: isFullWidth ? const Size.fromHeight(44) : null,
     );
 
+    Widget buttonWidget;
     if (icon != null) {
-      return Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: ElevatedButton.icon(
-          onPressed: isLoading ? null : onPressed,
-          icon: isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Icon(icon),
-          label: Text(
-            label,
-            style: textStyle,
-          ),
-          style: style,
+      buttonWidget = ElevatedButton.icon(
+        onPressed: isLoading ? null : onPressed,
+        icon: isLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Icon(icon, size: 20),
+        label: Text(
+          label,
+          style: textStyle ?? const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
+        style: style,
       );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: ElevatedButton(
+    } else {
+      buttonWidget = ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: style,
         child: isLoading
             ? const SizedBox(
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(
                   color: Colors.white,
                   strokeWidth: 2,
@@ -78,9 +73,20 @@ class PrimaryButton extends StatelessWidget {
               )
             : Text(
                 label,
-                style: textStyle,
+                style: textStyle ?? const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
+      );
+    }
+
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 12,
+        bottom: bottomPadding > 0 ? bottomPadding + 12 : 24.0,
       ),
+      child: buttonWidget,
     );
   }
 }
