@@ -16,6 +16,7 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final _currency = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 2);
+  static final _dayMonthFormat = DateFormat('dd MMM');
 
   @override
   void initState() {
@@ -235,7 +236,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return Column(
       children: state.dailyRevenue.map((entry) {
-        final label = DateFormat('dd MMM').format(entry.date);
+        final label = _dayMonthFormat.format(entry.date);
         final amount = _currency.format(entry.revenue);
         final progress = state.dailyRevenue.isEmpty
             ? 0.0

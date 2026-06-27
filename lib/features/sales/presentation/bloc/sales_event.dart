@@ -14,3 +14,5 @@ class SaveSaleEvent extends SalesEvent {
   @override
   List<Object?> get props => [sale];
 }
+
+class ClearSalesEvent extends SalesEvent {}

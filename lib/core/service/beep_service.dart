@@ -5,9 +5,10 @@ import 'package:audioplayers/audioplayers.dart';
 
 class BeepService {
   static final AudioPlayer _player = AudioPlayer();
+  static final Uint8List _cachedWav = _generateBeepWav();
 
   static Future<void> beep() async {
-    await _player.play(BytesSource(_generateBeepWav()));
+    await _player.play(BytesSource(_cachedWav));
   }
 
   static Uint8List _generateBeepWav({

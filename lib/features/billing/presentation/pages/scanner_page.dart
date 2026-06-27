@@ -17,6 +17,7 @@ class _ScannerPageState extends State<ScannerPage>
     with WidgetsBindingObserver, RouteAware {
   late MobileScannerController controller;
   bool _isScanned = false;
+  bool? _hasVibrator;
 
   // ────────────────────────────────────────────────────────────────────
   // Lifecycle
@@ -27,6 +28,7 @@ class _ScannerPageState extends State<ScannerPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initController();
+    Vibration.hasVibrator().then((v) => _hasVibrator = v);
   }
 
   @override
@@ -138,8 +140,7 @@ class _ScannerPageState extends State<ScannerPage>
 
         // Beep and vibrate on successful scan
         SystemSound.play(SystemSoundType.click);
-        final hasVibrator = await Vibration.hasVibrator();
-        if (hasVibrator == true) {
+        if (_hasVibrator == true) {
           Vibration.vibrate();
         }
 

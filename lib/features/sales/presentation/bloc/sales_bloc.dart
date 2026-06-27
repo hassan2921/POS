@@ -17,6 +17,7 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
   }) : super(const SalesState()) {
     on<LoadSalesEvent>(_onLoad);
     on<SaveSaleEvent>(_onSave);
+    on<ClearSalesEvent>((_, emit) => emit(const SalesState()));
   }
 
   Future<void> _onLoad(LoadSalesEvent event, Emitter<SalesState> emit) async {

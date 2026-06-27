@@ -40,7 +40,7 @@ class MyApp extends StatelessWidget {
           create: (_) => di.sl<BillingBloc>(),
         ),
         BlocProvider<DashboardBloc>(
-          create: (_) => di.sl<DashboardBloc>()..add(LoadDashboardEvent()),
+          create: (_) => di.sl<DashboardBloc>(),
         ),
         BlocProvider<LanguageCubit>(
           create: (_) => LanguageCubit(),
@@ -49,7 +49,7 @@ class MyApp extends StatelessWidget {
           create: (_) => di.sl<PrinterBloc>()..add(InitPrinterEvent()),
         ),
         BlocProvider<SalesBloc>(
-          create: (_) => di.sl<SalesBloc>()..add(LoadSalesEvent()),
+          create: (_) => di.sl<SalesBloc>(),
         ),
         BlocProvider<KhataBloc>(
           create: (_) => di.sl<KhataBloc>()..add(LoadKhataEvent()),

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 /// Rendered off-screen via RepaintBoundary to produce a receipt PNG.
 /// Wrap with RepaintBoundary and pass the key to ReceiptShareService.
 class ReceiptImageWidget extends StatelessWidget {
+  static final _dateFormat = DateFormat('dd MMM yyyy  hh:mm a');
   final String shopName;
   final String address1;
   final String address2;
@@ -45,7 +46,7 @@ class ReceiptImageWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFF6C63FF);
     const bg = Color(0xFFF8F9FF);
-    final now = DateFormat('dd MMM yyyy  hh:mm a').format(DateTime.now());
+    final now = _dateFormat.format(DateTime.now());
 
     return Container(
       width: 380,

@@ -16,12 +16,20 @@ class CustomerDetailPage extends StatefulWidget {
 }
 
 class _CustomerDetailPageState extends State<CustomerDetailPage> {
+  static final _dateFormat = DateFormat('dd MMM yyyy  hh:mm a');
+
   @override
   void initState() {
     super.initState();
     context
         .read<KhataBloc>()
         .add(LoadCustomerEntriesEvent(widget.customer.id));
+  }
+
+  @override
+  void dispose() {
+    context.read<KhataBloc>().add(ClearCustomerEntriesEvent());
+    super.dispose();
   }
 
   @override
@@ -280,7 +288,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
 
   Widget _buildEntryTile(KhataEntry entry) {
     final isCredit = entry.type == KhataEntryType.credit;
-    final dateStr = DateFormat('dd MMM yyyy  hh:mm a').format(entry.date);
+    final dateStr = _dateFormat.format(entry.date);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -349,7 +357,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     final noteCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
@@ -424,7 +432,10 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      amountCtrl.dispose();
+      noteCtrl.dispose();
+    });
   }
 
   void _showPaymentDialog(BuildContext context, customer) {
@@ -432,7 +443,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     final noteCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
@@ -523,7 +534,10 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      amountCtrl.dispose();
+      noteCtrl.dispose();
+    });
   }
 
   String _sanitizePhoneForWhatsApp(String phone) {

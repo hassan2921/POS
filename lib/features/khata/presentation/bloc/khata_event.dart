@@ -57,3 +57,5 @@ class AddPaymentEvent extends KhataEvent {
   @override
   List<Object?> get props => [customerId, amount, note];
 }
+
+class ClearCustomerEntriesEvent extends KhataEvent {}

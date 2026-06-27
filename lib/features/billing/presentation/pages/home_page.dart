@@ -37,9 +37,16 @@ class _HomePageState extends State<HomePage> {
 
   bool _isCameraOn = true;
   bool _isFlashOn = false;
+  bool? _hasVibrator;
 
   // Cooldown mapping to prevent rapid firing of the same barcode
   final Map<String, DateTime> _lastScanTimes = {};
+
+  @override
+  void initState() {
+    super.initState();
+    Vibration.hasVibrator().then((v) => _hasVibrator = v);
+  }
 
   @override
   void dispose() {
@@ -47,9 +54,12 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _onDetect(BarcodeCapture capture) async {
+  void _onDetect(BarcodeCapture capture) {
     final List<Barcode> barcodes = capture.barcodes;
     final now = DateTime.now();
+
+    // Prune entries older than the cooldown window to prevent unbounded growth
+    _lastScanTimes.removeWhere((_, t) => now.difference(t).inSeconds >= 2);
 
     for (final barcode in barcodes) {
       if (barcode.rawValue != null) {
@@ -67,8 +77,7 @@ class _HomePageState extends State<HomePage> {
 
         // Beep and vibrate on successful scan
         BeepService.beep();
-        final hasVibrator = await Vibration.hasVibrator();
-        if (hasVibrator == true) {
+        if (_hasVibrator == true) {
           Vibration.vibrate(duration: 80);
         }
 
@@ -623,174 +632,17 @@ class _HomePageState extends State<HomePage> {
   // ── Manual Item Sheet ─────────────────────────────────────────────────────
 
   void _showManualItemSheet(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
-    int qty = 1;
-    final formKey = GlobalKey<FormState>();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            ),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-              child: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Handle
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(Icons.edit_note_rounded,
-                              color: Theme.of(context).primaryColor, size: 22),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(context.tr('add_item_manually'),
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Item Name
-                    TextFormField(
-                      controller: nameCtrl,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: InputDecoration(
-                        labelText: context.tr('item_name'),
-                        hintText: context.tr('item_name_hint'),
-                        prefixIcon: const Icon(Icons.label_outline),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? context.trOnce('item_name_required')
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Price
-                    TextFormField(
-                      controller: priceCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: context.tr('price_label'),
-                        hintText: '0.00',
-                        prefixText: 'Rs. ',
-                        prefixStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return context.trOnce('enter_price');
-                        final p = double.tryParse(v.trim());
-                        if (p == null || p <= 0) return context.trOnce('enter_valid_price');
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Quantity stepper
-                    Row(
-                      children: [
-                        Text(context.tr('quantity'),
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w600)),
-                        const Spacer(),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove, size: 20),
-                                onPressed: qty > 1
-                                    ? () => setSheetState(() => qty--)
-                                    : null,
-                              ),
-                              SizedBox(
-                                width: 36,
-                                child: Text('$qty',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.add, size: 20),
-                                onPressed: () =>
-                                    setSheetState(() => qty++),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Add button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                        ),
-                        icon: const Icon(Icons.add_shopping_cart),
-                        label: Text(context.tr('add_to_cart'),
-                            style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.bold)),
-                        onPressed: () {
-                          if (formKey.currentState!.validate()) {
-                            context.read<BillingBloc>().add(AddManualItemEvent(
-                                  name: nameCtrl.text.trim(),
-                                  price: double.parse(priceCtrl.text.trim()),
-                                  quantity: qty,
-                                ));
-                            Navigator.of(ctx).pop();
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
+      builder: (_) => _ManualItemSheet(
+        onAdd: (name, price, qty) {
+          context.read<BillingBloc>().add(AddManualItemEvent(
+                name: name,
+                price: price,
+                quantity: qty,
+              ));
         },
       ),
     );
@@ -848,6 +700,182 @@ class _HomePageState extends State<HomePage> {
           ],
         );
       },
+    );
+  }
+}
+
+class _ManualItemSheet extends StatefulWidget {
+  final void Function(String name, double price, int qty) onAdd;
+  const _ManualItemSheet({required this.onAdd});
+
+  @override
+  State<_ManualItemSheet> createState() => _ManualItemSheetState();
+}
+
+class _ManualItemSheetState extends State<_ManualItemSheet> {
+  final _nameCtrl = TextEditingController();
+  final _priceCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  int _qty = 1;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.edit_note_rounded,
+                        color: Theme.of(context).primaryColor, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(context.tr('add_item_manually'),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _nameCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: context.tr('item_name'),
+                  hintText: context.tr('item_name_hint'),
+                  prefixIcon: const Icon(Icons.label_outline),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? context.trOnce('item_name_required')
+                    : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _priceCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: context.tr('price_label'),
+                  hintText: '0.00',
+                  prefixText: 'Rs. ',
+                  prefixStyle: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w500),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return context.trOnce('enter_price');
+                  }
+                  final p = double.tryParse(v.trim());
+                  if (p == null || p <= 0) {
+                    return context.trOnce('enter_valid_price');
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Text(context.tr('quantity'),
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
+                  const Spacer(),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove, size: 20),
+                          onPressed: _qty > 1
+                              ? () => setState(() => _qty--)
+                              : null,
+                        ),
+                        SizedBox(
+                          width: 36,
+                          child: Text('$_qty',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add, size: 20),
+                          onPressed: () => setState(() => _qty++),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const Icon(Icons.add_shopping_cart),
+                  label: Text(context.tr('add_to_cart'),
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.bold)),
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      widget.onAdd(
+                        _nameCtrl.text.trim(),
+                        double.parse(_priceCtrl.text.trim()),
+                        _qty,
+                      );
+                      Navigator.of(context).pop();
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

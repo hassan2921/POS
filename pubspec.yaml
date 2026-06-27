@@ -51,6 +51,7 @@ dependencies:
 
   url_launcher: ^6.3.0
   dartz: ^0.10.1
+  crypto: ^3.0.0
 
 dev_dependencies:
   flutter_test:

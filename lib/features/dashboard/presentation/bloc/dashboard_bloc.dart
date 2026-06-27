@@ -13,9 +13,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final GetAllSalesUseCase getAllSalesUseCase;
   final GetProductsUseCase getProductsUseCase;
 
-  // Cache all sales so period filtering is instant
-  List<Sale> _allSales = [];
-  List<Product> _allProducts = [];
+  List<Sale> _allSales = const [];
+  List<Product> _allProducts = const [];
+  bool _cacheValid = false;
 
   DashboardBloc({
     required this.getAllSalesUseCase,
@@ -57,13 +57,42 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
     _allSales = sales;
     _allProducts = products;
+    _cacheValid = true;
 
     _emitComputedState(emit, state.period);
+
+    // Free the in-memory lists after computing — a business with thousands of
+    // sales would otherwise hold them forever alongside the BLoC singleton.
+    // Period changes will reload from Hive (fast, since Hive caches internally).
+    _allSales = const [];
+    _allProducts = const [];
+    _cacheValid = false;
   }
 
-  void _onChangePeriod(
-      ChangePeriodEvent event, Emitter<DashboardState> emit) {
+  Future<void> _onChangePeriod(
+      ChangePeriodEvent event, Emitter<DashboardState> emit) async {
+    if (!_cacheValid) {
+      emit(state.copyWith(status: DashboardStatus.loading));
+      final salesResult = await getAllSalesUseCase(NoParams());
+      final productsResult = await getProductsUseCase(NoParams());
+
+      salesResult.fold(
+        (f) => emit(state.copyWith(status: DashboardStatus.error, error: f.message)),
+        (d) => _allSales = d,
+      );
+      productsResult.fold(
+        (f) => emit(state.copyWith(status: DashboardStatus.error, error: f.message)),
+        (d) => _allProducts = d,
+      );
+      if (state.status == DashboardStatus.error) return;
+      _cacheValid = true;
+    }
+
     _emitComputedState(emit, event.period);
+
+    _allSales = const [];
+    _allProducts = const [];
+    _cacheValid = false;
   }
 
   void _emitComputedState(Emitter<DashboardState> emit, DashboardPeriod period) {

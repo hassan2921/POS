@@ -30,6 +30,8 @@ class KhataBloc extends Bloc<KhataEvent, KhataState> {
     on<LoadCustomerEntriesEvent>(_onLoadEntries);
     on<AddCreditEntryEvent>(_onAddCredit);
     on<AddPaymentEvent>(_onAddPayment);
+    on<ClearCustomerEntriesEvent>(
+        (_, emit) => emit(state.copyWith(selectedEntries: [])));
   }
 
   Future<void> _onLoad(

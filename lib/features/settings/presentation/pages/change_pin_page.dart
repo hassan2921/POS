@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/service/pin_service.dart';
@@ -18,8 +19,44 @@ class _ChangePinPageState extends State<ChangePinPage> {
   String _newPin = '';
   bool _hasError = false;
   String _statusMessage = 'Enter your current PIN';
+  bool _isLocked = false;
+  Timer? _lockTimer;
+
+  @override
+  void dispose() {
+    _lockTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startLockCountdown() {
+    _isLocked = true;
+    final rem = PinService.lockRemainingSeconds();
+    setState(() {
+      _hasError = true;
+      _statusMessage = 'Too many attempts. Wait ${rem}s';
+    });
+    _lockTimer?.cancel();
+    _lockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final remaining = PinService.lockRemainingSeconds();
+      if (remaining <= 0) {
+        timer.cancel();
+        setState(() {
+          _isLocked = false;
+          _hasError = false;
+          _statusMessage = 'Enter your current PIN';
+        });
+      } else {
+        setState(() => _statusMessage = 'Too many attempts. Wait ${remaining}s');
+      }
+    });
+  }
 
   void _onKeyTap(String digit) {
+    if (_isLocked) return;
     if (_enteredPin.length >= 4) return;
     setState(() {
       _enteredPin += digit;
@@ -47,6 +84,10 @@ class _ChangePinPageState extends State<ChangePinPage> {
             _statusMessage = 'Enter your new PIN';
           });
         } else {
+          if (PinService.isLocked()) {
+            _startLockCountdown();
+            return;
+          }
           await _showError('Wrong current PIN');
         }
         break;

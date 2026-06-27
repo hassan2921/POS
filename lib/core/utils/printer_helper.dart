@@ -20,6 +20,8 @@ class PrinterHelper {
   factory PrinterHelper() => _instance;
   PrinterHelper._internal();
 
+  static final _receiptDateFormat = DateFormat('dd-MM-yyyy hh:mm a');
+
   bool _isConnected = false;
   bool get isConnected => _isConnected;
 
@@ -143,7 +145,7 @@ class PrinterHelper {
 
     // Date and Time
     String formattedDate =
-        DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now());
+        _receiptDateFormat.format(DateTime.now());
     bytes += _textToBytes(formattedDate);
     bytes += EscPos.lineFeed;
 

@@ -19,6 +19,7 @@ class ReceiptShareService {
 
     final image = await boundary.toImage(pixelRatio: 3.0);
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
     if (byteData == null) return;
 
     final dir = await getTemporaryDirectory();
@@ -37,9 +38,11 @@ class ReceiptShareService {
     required String phone,
     required String message,
   }) async {
+    final sanitizedPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
     final encoded = Uri.encodeComponent(message);
-    final appUrl = Uri.parse('whatsapp://send?phone=$phone&text=$encoded');
-    final webUrl = Uri.parse('https://wa.me/$phone?text=$encoded');
+    final appUrl =
+        Uri.parse('whatsapp://send?phone=$sanitizedPhone&text=$encoded');
+    final webUrl = Uri.parse('https://wa.me/$sanitizedPhone?text=$encoded');
 
     try {
       final launched =

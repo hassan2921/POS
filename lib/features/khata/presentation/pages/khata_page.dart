@@ -331,7 +331,7 @@ class KhataPage extends StatelessWidget {
     final phoneCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
@@ -405,6 +405,9 @@ class KhataPage extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      nameCtrl.dispose();
+      phoneCtrl.dispose();
+    });
   }
 }

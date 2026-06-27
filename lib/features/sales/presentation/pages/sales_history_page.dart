@@ -14,10 +14,18 @@ class SalesHistoryPage extends StatefulWidget {
 }
 
 class _SalesHistoryPageState extends State<SalesHistoryPage> {
+  static final _dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
+
   @override
   void initState() {
     super.initState();
     context.read<SalesBloc>().add(LoadSalesEvent());
+  }
+
+  @override
+  void dispose() {
+    context.read<SalesBloc>().add(ClearSalesEvent());
+    super.dispose();
   }
 
   @override
@@ -133,7 +141,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
   }
 
   Widget _buildSaleCard(BuildContext context, Sale sale) {
-    final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(sale.date);
+    final dateStr = _dateFormat.format(sale.date);
 
     return Container(
       decoration: BoxDecoration(

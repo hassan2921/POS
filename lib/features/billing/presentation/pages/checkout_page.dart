@@ -29,6 +29,7 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   _PayMethod? _selectedMethod;
+  bool _methodAutoSelected = false;
   final GlobalKey _receiptKey = GlobalKey();
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -329,6 +330,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ],
       ),
     );
+    phoneController.dispose();
   }
 
   Future<void> _sendWhatsAppText({
@@ -510,8 +512,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     shopState is ShopLoaded ? shopState.shop : const Shop();
                 final methods = _availableMethods(shop);
 
-                // Auto-select first available method if none selected
-                if (_selectedMethod == null && methods.isNotEmpty) {
+                // Auto-select first available method — guard ensures only one
+                // addPostFrameCallback is ever registered across rebuilds.
+                if (!_methodAutoSelected && _selectedMethod == null && methods.isNotEmpty) {
+                  _methodAutoSelected = true;
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) {
                       setState(() => _selectedMethod = methods.first);
@@ -919,7 +923,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ],
                     ),
 
-                    // Off-screen receipt for image capture
+                    // Off-screen receipt for image capture — only built after order confirmed
+                    if (billingState.orderConfirmed)
                     Positioned(
                       left: -2000,
                       top: 0,
@@ -1237,7 +1242,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
           );
         });
       },
-    );
+    ).whenComplete(() {
+      paidNowCtrl.dispose();
+    });
   }
 }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/service/pin_service.dart';
@@ -17,6 +18,8 @@ class _PinPageState extends State<PinPage> {
   bool _isConfirmStep = false;
   String _statusMessage = '';
   bool _hasError = false;
+  bool _isLocked = false;
+  Timer? _lockTimer;
 
   @override
   void initState() {
@@ -25,7 +28,41 @@ class _PinPageState extends State<PinPage> {
     _statusMessage = _isSetupMode ? 'Create a 4-digit PIN' : 'Enter your PIN';
   }
 
+  @override
+  void dispose() {
+    _lockTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startLockCountdown() {
+    _isLocked = true;
+    final rem = PinService.lockRemainingSeconds();
+    setState(() {
+      _hasError = true;
+      _statusMessage = 'Too many attempts. Wait ${rem}s';
+    });
+    _lockTimer?.cancel();
+    _lockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final remaining = PinService.lockRemainingSeconds();
+      if (remaining <= 0) {
+        timer.cancel();
+        setState(() {
+          _isLocked = false;
+          _hasError = false;
+          _statusMessage = 'Enter your PIN';
+        });
+      } else {
+        setState(() => _statusMessage = 'Too many attempts. Wait ${remaining}s');
+      }
+    });
+  }
+
   void _onKeyTap(String digit) {
+    if (_isLocked || PinService.isLocked()) return;
     if (_enteredPin.length >= 4) return;
     setState(() {
       _enteredPin += digit;
@@ -38,7 +75,7 @@ class _PinPageState extends State<PinPage> {
   }
 
   void _onDelete() {
-    if (_enteredPin.isEmpty) return;
+    if (_isLocked || _enteredPin.isEmpty) return;
     setState(() {
       _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
       _hasError = false;
@@ -89,8 +126,12 @@ class _PinPageState extends State<PinPage> {
           _statusMessage = 'Wrong PIN. Try again.';
           _enteredPin = '';
         });
+        if (PinService.isLocked()) {
+          _startLockCountdown();
+          return;
+        }
         await Future.delayed(const Duration(seconds: 1));
-        if (mounted) {
+        if (mounted && !_isLocked) {
           setState(() {
             _hasError = false;
             _statusMessage = 'Enter your PIN';
