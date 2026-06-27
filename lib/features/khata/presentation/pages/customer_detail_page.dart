@@ -6,6 +6,7 @@ import '../../domain/entities/customer.dart';
 import '../../domain/entities/khata_entry.dart';
 import '../../../../core/utils/app_localizations.dart';
 import '../../../../core/service/receipt_share_service.dart';
+import '../../../../core/bloc/language_cubit.dart';
 
 class CustomerDetailPage extends StatefulWidget {
   final Customer customer;
@@ -28,27 +29,32 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
 
   @override
   void dispose() {
-    context.read<KhataBloc>().add(ClearCustomerEntriesEvent());
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<KhataBloc, KhataState>(
+      listenWhen: (prev, curr) => prev.error == null && curr.error != null,
       listener: (context, state) {
-        if (state.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.error!),
-            backgroundColor: Colors.red,
-          ));
-        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(state.error!),
+          backgroundColor: Colors.red,
+        ));
       },
       builder: (context, state) {
-        // Get latest customer balance from state (it may have changed)
-        final customer = state.customers.firstWhere(
-          (c) => c.id == widget.customer.id,
-          orElse: () => widget.customer,
-        );
+        // Get latest customer data from BLoC state.
+        // If the customer was deleted while this page was open, pop back.
+        final customerOrNull = state.customers
+            .where((c) => c.id == widget.customer.id)
+            .firstOrNull;
+        if (customerOrNull == null && state.customers.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context).pop();
+          });
+          return const SizedBox.shrink();
+        }
+        final customer = customerOrNull ?? widget.customer;
         final hasBalance = customer.balance > 0;
         final hasAdvance = customer.balance < 0;
 
@@ -352,192 +358,29 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     );
   }
 
-  void _showAddUdhaarDialog(BuildContext context, customer) {
-    final amountCtrl = TextEditingController();
-    final noteCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
+  void _showAddUdhaarDialog(BuildContext context, Customer customer) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(children: [
-          const Icon(Icons.add_circle_outline,
-              color: Color(0xFFE57373), size: 22),
-          const SizedBox(width: 10),
-          Text(context.tr('record_udhaar_title'),
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-        ]),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: amountCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: context.tr('amount_given_label'),
-                  prefixText: 'Rs. ',
-                  prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return context.trOnce('enter_amount');
-                  final p = double.tryParse(v.trim());
-                  if (p == null || p <= 0) return context.trOnce('enter_valid_amount');
-                  return null;
-                },
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: noteCtrl,
-                decoration: InputDecoration(
-                  labelText: context.tr('note_optional'),
-                  prefixIcon: const Icon(Icons.note_outlined),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(context.tr('cancel'),
-                  style: TextStyle(color: Colors.grey[500]))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE57373),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+      builder: (_) => _AddUdhaarDialog(
+        onAdd: (amount, note) => context.read<KhataBloc>().add(
+              AddCreditEntryEvent(
+                  customerId: customer.id, amount: amount, note: note),
             ),
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                context.read<KhataBloc>().add(AddCreditEntryEvent(
-                      customerId: customer.id,
-                      amount: double.parse(amountCtrl.text.trim()),
-                      note: noteCtrl.text.trim(),
-                    ));
-                Navigator.pop(ctx);
-              }
-            },
-            child: Text(context.tr('add_udhaar')),
-          ),
-        ],
       ),
-    ).whenComplete(() {
-      amountCtrl.dispose();
-      noteCtrl.dispose();
-    });
+    );
   }
 
-  void _showPaymentDialog(BuildContext context, customer) {
-    final amountCtrl = TextEditingController();
-    final noteCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
+  void _showPaymentDialog(BuildContext context, Customer customer) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(children: [
-          Icon(Icons.payments_outlined,
-              color: Colors.green[600], size: 22),
-          const SizedBox(width: 10),
-          Text(context.tr('record_payment'),
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-        ]),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                customer.balance > 0
-                    ? '${context.tr('outstanding_prefix')}${customer.balance.toStringAsFixed(0)}'
-                    : customer.balance < 0
-                        ? '${context.tr('advance')}: Rs. ${customer.balance.abs().toStringAsFixed(0)}'
-                        : context.tr('no_udhaar'),
-                style: TextStyle(
-                    fontSize: 13,
-                    color: customer.balance > 0
-                        ? Colors.red[600]
-                        : customer.balance < 0
-                            ? Colors.blue[600]
-                            : Colors.green[600],
-                    fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: amountCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: context.tr('amount_received'),
-                  prefixText: 'Rs. ',
-                  prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return context.trOnce('enter_amount');
-                  final p = double.tryParse(v.trim());
-                  if (p == null || p <= 0) return context.trOnce('enter_valid_amount');
-                  return null;
-                },
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: noteCtrl,
-                decoration: InputDecoration(
-                  labelText: context.tr('note_optional'),
-                  prefixIcon: const Icon(Icons.note_outlined),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child:
-                  Text(context.tr('cancel'), style: TextStyle(color: Colors.grey[500]))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[600],
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+      builder: (_) => _PaymentDialog(
+        customer: customer,
+        onAdd: (amount, note) => context.read<KhataBloc>().add(
+              AddPaymentEvent(
+                  customerId: customer.id, amount: amount, note: note),
             ),
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                context.read<KhataBloc>().add(AddPaymentEvent(
-                      customerId: customer.id,
-                      amount: double.parse(amountCtrl.text.trim()),
-                      note: noteCtrl.text.trim(),
-                    ));
-                Navigator.pop(ctx);
-              }
-            },
-            child: Text(context.tr('save_payment')),
-          ),
-        ],
       ),
-    ).whenComplete(() {
-      amountCtrl.dispose();
-      noteCtrl.dispose();
-    });
+    );
   }
 
   String _sanitizePhoneForWhatsApp(String phone) {
@@ -556,7 +399,8 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
 
   Future<void> _sendWhatsappReminder(Customer customer) async {
     final outstanding = customer.balance.abs().toStringAsFixed(0);
-    final message = context.isUrdu
+    final isUrdu = context.read<LanguageCubit>().state == AppLanguage.urdu;
+    final message = isUrdu
         ? 'محترم ${customer.name}، یہ ایک دوستانہ یاد دہانی ہے کہ آپ کی بقایا رقم $outstanding روپے ہے۔ براہ کرم جلد از جلد ادائیگی کریں۔ شکریہ!'
         : 'Dear ${customer.name}, this is a friendly reminder that your outstanding balance is Rs. $outstanding. Please clear it at your earliest convenience. Thank you!';
 
@@ -564,10 +408,211 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     final ok = await ReceiptShareService.sendWhatsAppText(
         phone: formattedPhone, message: message);
     if (!ok && mounted) {
+      final isUrduSnack = context.read<LanguageCubit>().state == AppLanguage.urdu;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(context.isUrdu ? 'واٹس ایپ انسٹال نہیں ہے!' : 'WhatsApp is not installed!'),
+        content: Text(isUrduSnack ? 'واٹس ایپ انسٹال نہیں ہے!' : 'WhatsApp is not installed!'),
         backgroundColor: Colors.red,
       ));
     }
+  }
+}
+
+// ── Add-udhaar dialog ──────────────────────────────────────────────────────────
+class _AddUdhaarDialog extends StatefulWidget {
+  final void Function(double amount, String note) onAdd;
+  const _AddUdhaarDialog({required this.onAdd});
+  @override
+  State<_AddUdhaarDialog> createState() => _AddUdhaarDialogState();
+}
+
+class _AddUdhaarDialogState extends State<_AddUdhaarDialog> {
+  final _amountCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(children: [
+        const Icon(Icons.add_circle_outline, color: Color(0xFFE57373), size: 22),
+        const SizedBox(width: 10),
+        Text(context.tr('record_udhaar_title'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+      ]),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: context.tr('amount_given_label'),
+                prefixText: 'Rs. ',
+                prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return context.trOnce('enter_amount');
+                final p = double.tryParse(v.trim());
+                if (p == null || p <= 0) return context.trOnce('enter_valid_amount');
+                return null;
+              },
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _noteCtrl,
+              decoration: InputDecoration(
+                labelText: context.tr('note_optional'),
+                prefixIcon: const Icon(Icons.note_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.tr('cancel'),
+                style: TextStyle(color: Colors.grey[500]))),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFE57373),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              widget.onAdd(
+                double.parse(_amountCtrl.text.trim()),
+                _noteCtrl.text.trim(),
+              );
+              Navigator.pop(context);
+            }
+          },
+          child: Text(context.tr('add_udhaar')),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Record-payment dialog ──────────────────────────────────────────────────────
+class _PaymentDialog extends StatefulWidget {
+  final Customer customer;
+  final void Function(double amount, String note) onAdd;
+  const _PaymentDialog({required this.customer, required this.onAdd});
+  @override
+  State<_PaymentDialog> createState() => _PaymentDialogState();
+}
+
+class _PaymentDialogState extends State<_PaymentDialog> {
+  final _amountCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final customer = widget.customer;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(children: [
+        Icon(Icons.payments_outlined, color: Colors.green[600], size: 22),
+        const SizedBox(width: 10),
+        Text(context.tr('record_payment'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+      ]),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              customer.balance > 0
+                  ? '${context.tr('outstanding_prefix')}${customer.balance.toStringAsFixed(0)}'
+                  : customer.balance < 0
+                      ? '${context.tr('advance')}: Rs. ${customer.balance.abs().toStringAsFixed(0)}'
+                      : context.tr('no_udhaar'),
+              style: TextStyle(
+                  fontSize: 13,
+                  color: customer.balance > 0
+                      ? Colors.red[600]
+                      : customer.balance < 0
+                          ? Colors.blue[600]
+                          : Colors.green[600],
+                  fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: context.tr('amount_received'),
+                prefixText: 'Rs. ',
+                prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return context.trOnce('enter_amount');
+                final p = double.tryParse(v.trim());
+                if (p == null || p <= 0) return context.trOnce('enter_valid_amount');
+                return null;
+              },
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _noteCtrl,
+              decoration: InputDecoration(
+                labelText: context.tr('note_optional'),
+                prefixIcon: const Icon(Icons.note_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.tr('cancel'),
+                style: TextStyle(color: Colors.grey[500]))),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green[600],
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              widget.onAdd(
+                double.parse(_amountCtrl.text.trim()),
+                _noteCtrl.text.trim(),
+              );
+              Navigator.pop(context);
+            }
+          },
+          child: Text(context.tr('save_payment')),
+        ),
+      ],
+    );
   }
 }

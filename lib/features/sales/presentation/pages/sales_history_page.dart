@@ -23,8 +23,14 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
   }
 
   @override
-  void dispose() {
+  void deactivate() {
+    // deactivate fires before the widget leaves the tree — context is valid.
     context.read<SalesBloc>().add(ClearSalesEvent());
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
     super.dispose();
   }
 

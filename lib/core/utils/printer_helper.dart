@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -75,34 +76,12 @@ class PrinterHelper {
 
   Future<void> printText(String text) async {
     if (!_isConnected) return;
-
-    // Simple text printing
-    // We can use bytes for advanced formatting
-    // But plugin supports basic text or bytes
-
-    // Checking battery or connection status
-    final bool connectionStatus = await PrintBluetoothThermal.connectionStatus;
-    if (connectionStatus) {
-      // Plugin allows sending bytes. We need ESC/POS commands for text.
-      // However, the plugin might have helper.
-      // Looking at doc, `writeBytes` or `writeString`?
-      // The plugin `print_bluetooth_thermal` mainly exposes `writeBytes`.
-      // We need a generator. `esc_pos_utils` is common but not requested.
-      // But wait, `print_bluetooth_thermal` example often uses `capability_profile` and `generator`.
-      // I don't have `esc_pos_utils` or similar in my pubspec.
-      // The user requested `print_bluetooth_thermal`.
-      // Let's assume we can send raw string bytes or use a simple helper.
-      // Actually without `esc_pos_utils`, formatting is hard.
-      // I will try to use `esc_pos_utils_plus` or similar if I can add it, but user gave specific packages.
-      // Wait, user allowed "use required plugins".
-      // "suggest barcode scanner ... and use required plugins".
-      // So I can add `esc_pos_utils_plus`.
-
-      // For now, I'll assume simple text printing by converting string to bytes.
-      // ASCII bytes.
-      List<int> bytes = text.codeUnits;
-      await PrintBluetoothThermal.writeBytes(bytes);
+    final live = await PrintBluetoothThermal.connectionStatus;
+    if (!live) {
+      _isConnected = false;
+      return;
     }
+    await PrintBluetoothThermal.writeBytes(_textToBytes(text));
   }
 
   Future<void> printReceipt({
@@ -110,11 +89,17 @@ class PrinterHelper {
     required String address1,
     required String address2,
     required String phone,
-    required List<Map<String, dynamic>> items, // Name, Qty, Price, Total
+    required List<Map<String, dynamic>> items,
     required double total,
     required String footer,
   }) async {
     if (!_isConnected) return;
+    // Re-verify live connection to catch Bluetooth drop since last operation
+    final live = await PrintBluetoothThermal.connectionStatus;
+    if (!live) {
+      _isConnected = false;
+      return;
+    }
 
     // Construct ESC/POS bytes manually or using helper
     List<int> bytes = [];
@@ -196,8 +181,11 @@ class PrinterHelper {
     await PrintBluetoothThermal.writeBytes(bytes);
   }
 
+  /// Encodes text to Latin-1 bytes for ESC/POS printers.
+  /// Non-Latin-1 characters (Urdu/Arabic) are replaced with '?' to prevent
+  /// corrupting the ESC/POS byte stream. For Urdu printing, use a printer
+  /// with Arabic font support and send the appropriate code-page commands.
   List<int> _textToBytes(String text) {
-    // Should verify encoding, but Latin-1 usually works for basic printers
-    return List.from(text.codeUnits);
+    return latin1.encode(text.replaceAll(RegExp(r'[^\x00-\xFF]'), '?'));
   }
 }

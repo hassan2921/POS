@@ -4,11 +4,27 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 
 class BeepService {
-  static final AudioPlayer _player = AudioPlayer();
-  static final Uint8List _cachedWav = _generateBeepWav();
+  // Private constructor — callers use the singleton instance.
+  BeepService._();
+  static final BeepService _instance = BeepService._();
+  static BeepService get instance => _instance;
 
-  static Future<void> beep() async {
-    await _player.play(BytesSource(_cachedWav));
+  final AudioPlayer _player = AudioPlayer();
+  final Uint8List _cachedWav = _generateBeepWav();
+  bool _disposed = false;
+
+  Future<void> beep() async {
+    if (_disposed) return;
+    try {
+      await _player.play(BytesSource(_cachedWav));
+    } catch (_) {
+      // Audio session may be unavailable (silent mode, focus denied). Ignore.
+    }
+  }
+
+  Future<void> dispose() async {
+    _disposed = true;
+    await _player.dispose();
   }
 
   static Uint8List _generateBeepWav({
@@ -45,9 +61,9 @@ class BeepService {
     writeU16(1); // PCM
     writeU16(1); // mono
     writeU32(sampleRate);
-    writeU32(sampleRate * 2); // byte rate
-    writeU16(2); // block align
-    writeU16(16); // bits per sample
+    writeU32(sampleRate * 2);
+    writeU16(2);
+    writeU16(16);
     writeStr('data');
     writeU32(dataSize);
 
@@ -56,7 +72,8 @@ class BeepService {
       double env = 1.0;
       if (i < fadeFrames) env = i / fadeFrames;
       if (i > numSamples - fadeFrames) env = (numSamples - i) / fadeFrames;
-      final sample = (sin(2 * pi * frequency * i / sampleRate) * 28000 * env).round();
+      final sample =
+          (sin(2 * pi * frequency * i / sampleRate) * 28000 * env).round();
       buffer.setInt16(offset, sample.clamp(-32768, 32767), Endian.little);
       offset += 2;
     }

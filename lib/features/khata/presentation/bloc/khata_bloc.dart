@@ -65,7 +65,11 @@ class KhataBloc extends Bloc<KhataEvent, KhataState> {
       DeleteCustomerEvent event, Emitter<KhataState> emit) async {
     final result = await deleteCustomerUseCase(event.customerId);
     result.fold(
-      (failure) => emit(state.copyWith(error: failure.message)),
+      (failure) {
+        emit(state.copyWith(error: failure.message));
+        // Reload so the Dismissible-removed tile reappears if the delete failed.
+        add(LoadKhataEvent());
+      },
       (_) => add(LoadKhataEvent()),
     );
   }

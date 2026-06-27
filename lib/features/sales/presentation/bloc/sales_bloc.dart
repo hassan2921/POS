@@ -32,7 +32,12 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
   }
 
   Future<void> _onSave(SaveSaleEvent event, Emitter<SalesState> emit) async {
-    await saveSaleUseCase(event.sale);
-    add(LoadSalesEvent());
+    final result = await saveSaleUseCase(event.sale);
+    result.fold(
+      (failure) => emit(state.copyWith(
+          status: SalesStatus.error,
+          message: 'Failed to save sale: ${failure.message}')),
+      (_) => add(LoadSalesEvent()),
+    );
   }
 }

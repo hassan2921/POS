@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -41,15 +42,21 @@ class _HomePageState extends State<HomePage> {
 
   // Cooldown mapping to prevent rapid firing of the same barcode
   final Map<String, DateTime> _lastScanTimes = {};
+  Timer? _scanPruneTimer;
 
   @override
   void initState() {
     super.initState();
     Vibration.hasVibrator().then((v) => _hasVibrator = v);
+    _scanPruneTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      final now = DateTime.now();
+      _lastScanTimes.removeWhere((_, t) => now.difference(t).inSeconds >= 2);
+    });
   }
 
   @override
   void dispose() {
+    _scanPruneTimer?.cancel();
     _scannerController.dispose();
     super.dispose();
   }
@@ -76,7 +83,7 @@ class _HomePageState extends State<HomePage> {
         _lastScanTimes[rawValue] = now;
 
         // Beep and vibrate on successful scan
-        BeepService.beep();
+        BeepService.instance.beep();
         if (_hasVibrator == true) {
           Vibration.vibrate(duration: 80);
         }
@@ -689,7 +696,7 @@ class _HomePageState extends State<HomePage> {
               onPressed: () async {
                 Navigator.pop(ctx);
                 _scannerController.stop();
-                await context.push('/products/add?barcode=$barcode');
+                await context.push('/products/add?barcode=${Uri.encodeQueryComponent(barcode)}');
                 if (_isCameraOn && mounted) _scannerController.start();
               },
               child: Text(

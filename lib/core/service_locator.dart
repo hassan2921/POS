@@ -39,7 +39,7 @@ final sl = GetIt.instance;
 
 Future<void> init() async {
   // ── Billing ──────────────────────────────────────────────────────────
-  sl.registerFactory(
+  sl.registerLazySingleton(
     () => BillingBloc(
       getProductByBarcodeUseCase: sl(),
       updateProductUseCase: sl(),

@@ -234,18 +234,17 @@ class _DashboardPageState extends State<DashboardPage> {
       return _buildEmptyState(context.tr('no_revenue_data'));
     }
 
+    // Compute total once outside the map to avoid O(n²) re-computation
+    final totalRevenue =
+        state.dailyRevenue.fold<double>(0, (sum, e) => sum + e.revenue);
+
     return Column(
       children: state.dailyRevenue.map((entry) {
         final label = _dayMonthFormat.format(entry.date);
         final amount = _currency.format(entry.revenue);
-        final progress = state.dailyRevenue.isEmpty
-            ? 0.0
-            : (entry.revenue /
-                    (state.dailyRevenue
-                            .map((e) => e.revenue)
-                            .fold<double>(0, (a, b) => a + b) +
-                        1))
-                .clamp(0.05, 1.0);
+        final progress = totalRevenue <= 0
+            ? 0.05
+            : (entry.revenue / totalRevenue).clamp(0.05, 1.0);
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),

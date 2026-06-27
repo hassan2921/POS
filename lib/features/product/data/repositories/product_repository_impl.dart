@@ -9,11 +9,9 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Future<Either<Failure, List<Product>>> getProducts() async {
     try {
-      final box = HiveDatabase.productBox;
-      final products = box.values.toList();
-      return Right(products);
-    } catch (e) {
-      return Left(CacheFailure(e.toString()));
+      return Right(HiveDatabase.productBox.values.toList());
+    } catch (_) {
+      return Left(const CacheFailure('Failed to load products'));
     }
   }
 
@@ -21,49 +19,46 @@ class ProductRepositoryImpl implements ProductRepository {
   Future<Either<Failure, Product>> getProductByBarcode(String barcode) async {
     try {
       final box = HiveDatabase.productBox;
-      final product = box.values.firstWhere(
-        (element) => element.barcode == barcode,
-        orElse: () => throw Exception('Product not found'),
-      );
-      return Right(product);
-    } catch (e) {
-      return Left(CacheFailure(e.toString()));
+      // Linear scan — acceptable for typical product catalogs (<1000 items).
+      // For very large catalogs, consider maintaining a barcode→id index map.
+      for (final product in box.values) {
+        if (product.barcode == barcode) return Right(product);
+      }
+      return Left(const CacheFailure('Product not found'));
+    } catch (_) {
+      return Left(const CacheFailure('Failed to search product'));
     }
   }
 
   @override
   Future<Either<Failure, void>> addProduct(Product product) async {
     try {
-      final box = HiveDatabase.productBox;
-      // You can use add() or put()
-      final model = ProductModel.fromEntity(product);
-      await box.put(model.id, model); // Using ID as key
+      await HiveDatabase.productBox
+          .put(product.id, ProductModel.fromEntity(product));
       return const Right(null);
-    } catch (e) {
-      return Left(CacheFailure(e.toString()));
+    } catch (_) {
+      return Left(const CacheFailure('Failed to add product'));
     }
   }
 
   @override
   Future<Either<Failure, void>> updateProduct(Product product) async {
     try {
-      final box = HiveDatabase.productBox;
-      final model = ProductModel.fromEntity(product);
-      await box.put(model.id, model);
+      await HiveDatabase.productBox
+          .put(product.id, ProductModel.fromEntity(product));
       return const Right(null);
-    } catch (e) {
-      return Left(CacheFailure(e.toString()));
+    } catch (_) {
+      return Left(const CacheFailure('Failed to update product'));
     }
   }
 
   @override
   Future<Either<Failure, void>> deleteProduct(String id) async {
     try {
-      final box = HiveDatabase.productBox;
-      await box.delete(id);
+      await HiveDatabase.productBox.delete(id);
       return const Right(null);
-    } catch (e) {
-      return Left(CacheFailure(e.toString()));
+    } catch (_) {
+      return Left(const CacheFailure('Failed to delete product'));
     }
   }
 }

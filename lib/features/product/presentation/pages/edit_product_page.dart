@@ -48,13 +48,23 @@ class _EditProductPageState extends State<EditProductPage> {
       );
 
       context.read<ProductBloc>().add(UpdateProduct(updatedProduct));
-      context.pop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<ProductBloc, ProductState>(
+      listener: (context, state) {
+        if (state.status == ProductStatus.success) {
+          context.pop();
+        } else if (state.status == ProductStatus.error) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(state.message ?? 'Failed to update product'),
+            backgroundColor: Colors.red,
+          ));
+        }
+      },
+      child: Scaffold(
         appBar: AppBar(
           elevation: 0,
           leading: IconButton(
@@ -115,6 +125,7 @@ class _EditProductPageState extends State<EditProductPage> {
                   TextFormField(
                     initialValue: _name,
                     textCapitalization: TextCapitalization.words,
+                    maxLength: 80,
                     validator:
                         AppValidators.required(context.trOnce('name_required')),
                     onSaved: (value) => _name = value!,
@@ -178,6 +189,7 @@ class _EditProductPageState extends State<EditProductPage> {
           onPressed: _submit,
           icon: Icons.save,
           label: context.tr('save_changes'),
-        ));
+        )),
+    );
   }
 }

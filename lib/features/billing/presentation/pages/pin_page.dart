@@ -95,7 +95,10 @@ class _PinPageState extends State<PinPage> {
       } else {
         // Step 2: confirm match
         if (_enteredPin == _confirmPin) {
-          await PinService.setPin(_enteredPin);
+          final pin = _enteredPin;
+          _enteredPin = '';
+          _confirmPin = '';
+          await PinService.setPin(pin);
           PinService.authenticate();
           if (mounted) context.go('/home');
         } else {

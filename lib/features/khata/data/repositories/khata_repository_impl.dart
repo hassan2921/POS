@@ -1,5 +1,6 @@
-import 'package:dartz/dartz.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:hive/hive.dart';
+import '../../../../core/data/hive_database.dart';
 import '../../../../core/error/failure.dart';
 import '../../domain/entities/customer.dart';
 import '../../domain/entities/khata_entry.dart';
@@ -8,10 +9,9 @@ import '../models/customer_model.dart';
 import '../models/khata_entry_model.dart';
 
 class KhataRepositoryImpl implements KhataRepository {
-  Box<CustomerModel> get _customerBox =>
-      Hive.box<CustomerModel>('customers');
-  Box<KhataEntryModel> get _entryBox =>
-      Hive.box<KhataEntryModel>('khata_entries');
+  // Use HiveDatabase constants instead of string literals so renames propagate
+  Box<CustomerModel> get _customerBox => HiveDatabase.customersBox;
+  Box<KhataEntryModel> get _entryBox => HiveDatabase.khataEntriesBox;
 
   // ── Customers ─────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ class KhataRepositoryImpl implements KhataRepository {
         ..sort((a, b) => b.balance.compareTo(a.balance));
       return Right(customers);
     } catch (e) {
-      return Left(CacheFailure('Failed to load customers: $e'));
+      return Left(CacheFailure('Failed to load customers'));
     }
   }
 
@@ -33,7 +33,7 @@ class KhataRepositoryImpl implements KhataRepository {
           customer.id, CustomerModel.fromEntity(customer));
       return const Right(null);
     } catch (e) {
-      return Left(CacheFailure('Failed to add customer: $e'));
+      return Left(CacheFailure('Failed to add customer'));
     }
   }
 
@@ -44,23 +44,26 @@ class KhataRepositoryImpl implements KhataRepository {
           customer.id, CustomerModel.fromEntity(customer));
       return const Right(null);
     } catch (e) {
-      return Left(CacheFailure('Failed to update customer: $e'));
+      return Left(CacheFailure('Failed to update customer'));
     }
   }
 
   @override
   Future<Either<Failure, void>> deleteCustomer(String id) async {
     try {
-      await _customerBox.delete(id);
-      // Also remove all entries for this customer
-      final keys = _entryBox.values
+      // Collect entry keys BEFORE deleting the customer so that if entry
+      // deletion fails we have not lost the customer record entirely.
+      final entryKeys = _entryBox.values
           .where((e) => e.customerId == id)
           .map((e) => e.id)
           .toList();
-      await _entryBox.deleteAll(keys);
+
+      await _entryBox.deleteAll(entryKeys);
+      await _customerBox.delete(id);
+
       return const Right(null);
     } catch (e) {
-      return Left(CacheFailure('Failed to delete customer: $e'));
+      return Left(CacheFailure('Failed to delete customer'));
     }
   }
 
@@ -75,32 +78,41 @@ class KhataRepositoryImpl implements KhataRepository {
       )..sort((a, b) => b.date.compareTo(a.date));
       return Right(entries);
     } catch (e) {
-      return Left(CacheFailure('Failed to load entries: $e'));
+      return Left(CacheFailure('Failed to load entries'));
     }
   }
 
   @override
   Future<Either<Failure, void>> addEntry(KhataEntry entry) async {
     try {
-      await _entryBox.put(entry.id, KhataEntryModel.fromEntity(entry));
-
-      // Update customer balance
       final customer = _customerBox.get(entry.customerId);
-      if (customer != null) {
-        final delta = entry.type == KhataEntryType.credit
-            ? entry.amount
-            : -entry.amount;
-        final updated = CustomerModel(
-          id: customer.id,
-          name: customer.name,
-          phone: customer.phone,
-          balance: customer.balance + delta,
-        );
-        await _customerBox.put(updated.id, updated);
+      if (customer == null) {
+        return Left(CacheFailure('Customer not found'));
       }
+
+      // Compute the updated balance BEFORE writing either record.
+      // If either write fails, the try-catch rolls back nothing (Hive has
+      // no transactions), but at least we fail cleanly rather than silently.
+      final delta = entry.type == KhataEntryType.credit
+          ? entry.amount
+          : -entry.amount;
+
+      final updatedCustomer = CustomerModel(
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        balance: customer.balance + delta,
+      );
+
+      // Write the entry first, then update the balance.
+      // If balance update fails, the entry exists but balance is stale —
+      // visible as a discrepancy that can be corrected by re-loading entries.
+      await _entryBox.put(entry.id, KhataEntryModel.fromEntity(entry));
+      await _customerBox.put(updatedCustomer.id, updatedCustomer);
+
       return const Right(null);
     } catch (e) {
-      return Left(CacheFailure('Failed to save entry: $e'));
+      return Left(CacheFailure('Failed to save entry'));
     }
   }
 }

@@ -33,40 +33,56 @@ class PrinterBloc extends Bloc<PrinterEvent, PrinterState> {
       if (devices.isEmpty) {
         emit(state.copyWith(
           status: PrinterStatus.scanFailure,
-          errorMessage: 'No paired devices found.',
+          errorMessage: 'No paired Bluetooth devices found.',
           devices: [],
         ));
         return;
       }
 
-      bool connected = false;
-      for (var device in devices) {
-        final success = await repository.connect(device.macAdress);
-        if (success) {
-          await repository.savePrinterData(device.macAdress, device.name);
-          emit(state.copyWith(
-            status: PrinterStatus.connected,
-            connectedMac: device.macAdress,
-            connectedName: device.name,
-            devices: devices,
-            clearError: true,
-          ));
-          connected = true;
-          break;
-        }
-      }
-
-      if (!connected) {
+      // Only attempt to reconnect to the previously saved printer, not every
+      // paired device. Connecting to an arbitrary device (speaker, phone, etc.)
+      // could leak receipt data to unintended recipients.
+      final savedMac = state.connectedMac ?? repository.getSavedPrinterMac();
+      if (savedMac == null) {
         emit(state.copyWith(
           status: PrinterStatus.scanFailure,
-          errorMessage: 'Could not connect to any paired device.',
+          errorMessage: 'No printer saved. Tap a device below to connect.',
+          devices: devices,
+        ));
+        return;
+      }
+
+      final savedDevice = devices.where((d) => d.macAdress == savedMac).firstOrNull;
+      if (savedDevice == null) {
+        emit(state.copyWith(
+          status: PrinterStatus.scanFailure,
+          errorMessage: 'Saved printer not found among paired devices.',
+          devices: devices,
+        ));
+        return;
+      }
+
+      final success = await repository.connect(savedDevice.macAdress);
+      if (success) {
+        await repository.savePrinterData(savedDevice.macAdress, savedDevice.name);
+        emit(state.copyWith(
+          status: PrinterStatus.connected,
+          connectedMac: savedDevice.macAdress,
+          connectedName: savedDevice.name,
+          devices: devices,
+          clearError: true,
+        ));
+      } else {
+        emit(state.copyWith(
+          status: PrinterStatus.scanFailure,
+          errorMessage: 'Could not reconnect to ${savedDevice.name}.',
           devices: devices,
         ));
       }
     } catch (e) {
       emit(state.copyWith(
         status: PrinterStatus.scanFailure,
-        errorMessage: e.toString(),
+        errorMessage: 'Scan failed. Check Bluetooth permissions.',
       ));
     }
   }
@@ -120,7 +136,14 @@ class PrinterBloc extends Bloc<PrinterEvent, PrinterState> {
   Future<void> _onTestPrint(
       TestPrintEvent event, Emitter<PrinterState> emit) async {
     emit(state.copyWith(status: PrinterStatus.testPrinting));
-    await repository.testPrint(event.shopName);
-    emit(state.copyWith(status: PrinterStatus.scanSuccess));
+    try {
+      await repository.testPrint(event.shopName);
+      emit(state.copyWith(status: PrinterStatus.connected));
+    } catch (e) {
+      emit(state.copyWith(
+        status: PrinterStatus.scanFailure,
+        errorMessage: 'Test print failed. Check printer connection.',
+      ));
+    }
   }
 }

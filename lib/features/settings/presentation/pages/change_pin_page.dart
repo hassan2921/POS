@@ -101,7 +101,10 @@ class _ChangePinPageState extends State<ChangePinPage> {
         break;
       case _ChangePinStep.confirmNew:
         if (_enteredPin == _newPin) {
-          await PinService.setPin(_enteredPin);
+          final pin = _enteredPin;
+          _enteredPin = '';
+          _newPin = '';
+          await PinService.setPin(pin);
           if (mounted) {
             context.pop();
           }

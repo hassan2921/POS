@@ -53,9 +53,7 @@ class _AddProductPageState extends State<AddProductPage> {
       if (existingProduct != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context
-                .trOnce('barcode_exists')
-                .replaceAll('{barcode}', _barcode)),
+            content: Text(context.trWith('barcode_exists', {'barcode': _barcode})),
             backgroundColor: Colors.red,
           ),
         );
@@ -72,13 +70,23 @@ class _AddProductPageState extends State<AddProductPage> {
       );
 
       context.read<ProductBloc>().add(AddProduct(product));
-      context.pop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<ProductBloc, ProductState>(
+      listener: (context, state) {
+        if (state.status == ProductStatus.success) {
+          context.pop();
+        } else if (state.status == ProductStatus.error) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(state.message ?? 'Failed to add product'),
+            backgroundColor: Colors.red,
+          ));
+        }
+      },
+      child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -141,6 +149,7 @@ class _AddProductPageState extends State<AddProductPage> {
                       hintText: context.tr('product_name_hint'),
                     ),
                     textCapitalization: TextCapitalization.words,
+                    maxLength: 80,
                     validator:
                         AppValidators.required(context.trOnce('name_required')),
                     onSaved: (value) => _name = value!,
@@ -201,6 +210,7 @@ class _AddProductPageState extends State<AddProductPage> {
           onPressed: _submit,
           icon: Icons.add_circle,
           label: context.tr('add_product_btn'),
-        ));
+        )),
+    );
   }
 }

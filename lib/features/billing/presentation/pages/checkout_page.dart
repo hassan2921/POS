@@ -31,6 +31,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   _PayMethod? _selectedMethod;
   bool _methodAutoSelected = false;
   final GlobalKey _receiptKey = GlobalKey();
+  bool _showReceiptWidget = false;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -103,8 +104,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     required Color color,
     required double amount,
   }) {
-    // Generic QR encoding — scanner apps like JazzCash/Easypaisa read phone QR
-    final qrData = 'tel:$number';
+    // Bare number — payment apps (JazzCash/Easypaisa) read this as a phone QR.
+    // tel: would open the dialer instead of the payment app.
+    final qrData = number.replaceAll(RegExp(r'\D'), '');
     return Column(
       children: [
         Row(
@@ -238,11 +240,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // ── Share ─────────────────────────────────────────────────────────────────
 
   Future<void> _shareReceiptImage() async {
+    setState(() => _showReceiptWidget = true);
     await Future.delayed(const Duration(milliseconds: 100));
     await ReceiptShareService.shareAsImage(
       boundaryKey: _receiptKey,
       filename: 'receipt.png',
     );
+    if (mounted) setState(() => _showReceiptWidget = false);
   }
 
   Future<void> _showWhatsAppDialog(
@@ -357,7 +361,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final qtyLabel = item.product.unit.isNotEmpty
           ? '${item.quantity} ${item.product.unit}'
           : '×${item.quantity}';
-      sb.writeln('• ${item.product.name} $qtyLabel  Rs. ${item.total.toStringAsFixed(2)}');
+      sb.writeln('• ${_escapeWhatsapp(item.product.name)} $qtyLabel  Rs. ${item.total.toStringAsFixed(2)}');
     }
     sb.writeln('');
     sb.writeln('━━━━━━━━━━━━━━━━');
@@ -385,6 +389,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ));
     }
   }
+
+  // Escapes WhatsApp markdown formatting characters in user-supplied strings.
+  String _escapeWhatsapp(String text) =>
+      text.replaceAll('*', r'\*').replaceAll('_', r'\_').replaceAll('~', r'\~').replaceAll('`', r'\`');
 
   void _showShareOptions(BillingState billingState, ShopState shopState) {
     showModalBottomSheet(
@@ -512,14 +520,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     shopState is ShopLoaded ? shopState.shop : const Shop();
                 final methods = _availableMethods(shop);
 
+                // If selected method is no longer available (shop data changed), clear it.
+                if (_selectedMethod != null && !methods.contains(_selectedMethod)) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() {
+                        _selectedMethod = null;
+                        _methodAutoSelected = false;
+                      });
+                    }
+                  });
+                }
+
                 // Auto-select first available method — guard ensures only one
                 // addPostFrameCallback is ever registered across rebuilds.
                 if (!_methodAutoSelected && _selectedMethod == null && methods.isNotEmpty) {
                   _methodAutoSelected = true;
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      setState(() => _selectedMethod = methods.first);
-                    }
+                    if (mounted) setState(() => _selectedMethod = methods.first);
                   });
                 }
 
@@ -559,7 +577,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          context.tr('low_stock_warning').replaceAll('{n}', '${low.length}'),
+                                          context.trWith('low_stock_warning', {'n': '${low.length}'}),
                                           style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
@@ -923,8 +941,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ],
                     ),
 
-                    // Off-screen receipt for image capture — only built after order confirmed
-                    if (billingState.orderConfirmed)
+                    // Off-screen receipt — only mounted while shareAsImage() is running
+                    if (_showReceiptWidget)
                     Positioned(
                       left: -2000,
                       top: 0,
@@ -986,265 +1004,293 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // ── Udhaar / Khata Sheet ──────────────────────────────────────────────────
 
   void _showUdhaarSheet(BuildContext context, BillingState billingState) {
-    final khataState = context.read<KhataBloc>().state;
-    final customers = khataState.customers;
-
-    final paidNowCtrl = TextEditingController();
-
+    final customers = context.read<KhataBloc>().state.customers;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        Customer? selected;
-        double paidNow = 0;
-        return StatefulBuilder(builder: (ctx, setSheet) {
-          final total = billingState.totalAmount;
-          final udhaarAmount = (total - paidNow).clamp(0.0, double.infinity);
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.65,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      builder: (_) => _UdhaarSheet(
+        billingState: billingState,
+        customers: customers,
+        onSave: (customerId, udhaarAmount) {
+          context.read<KhataBloc>().add(AddCreditEntryEvent(
+                customerId: customerId,
+                amount: udhaarAmount,
+                note:
+                    'Sale — ${billingState.cartItems.map((i) => i.product.name).join(', ')}',
+              ));
+        },
+      ),
+    );
+  }
+}
+
+// ── Udhaar bottom-sheet ────────────────────────────────────────────────────────
+// Owns its TextEditingController so it is disposed with the widget tree (after
+// the sheet animation), not by a whenComplete callback that fires too early.
+class _UdhaarSheet extends StatefulWidget {
+  final BillingState billingState;
+  final List<Customer> customers;
+  final void Function(String customerId, double udhaarAmount) onSave;
+
+  const _UdhaarSheet({
+    required this.billingState,
+    required this.customers,
+    required this.onSave,
+  });
+
+  @override
+  State<_UdhaarSheet> createState() => _UdhaarSheetState();
+}
+
+class _UdhaarSheetState extends State<_UdhaarSheet> {
+  final _paidNowCtrl = TextEditingController();
+  Customer? _selected;
+  double _paidNow = 0;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _paidNowCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final keyboardHeight = mq.viewInsets.bottom;
+    final sheetHeight = (mq.size.height * 0.65).clamp(
+      0.0,
+      mq.size.height - keyboardHeight - mq.padding.top - 20,
+    );
+    final total = widget.billingState.totalAmount;
+    final udhaarAmount = (total - _paidNow).clamp(0.0, double.infinity);
+    final customers = widget.customers;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: keyboardHeight),
+      child: Container(
+        height: sheetHeight,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
               children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.menu_book_rounded,
-                        color: Colors.red[400], size: 22),
-                    const SizedBox(width: 10),
-                    Text(context.trOnce('save_to_udhaar_title'),
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  context.trOnce('udhaar_sheet_desc').replaceAll('{amount}', billingState.totalAmount.toStringAsFixed(0)),
-                  style:
-                      TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
-                const SizedBox(height: 12),
-                if (customers.isEmpty)
-                  Expanded(
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.person_off,
-                              size: 40, color: Colors.grey[300]),
-                          const SizedBox(height: 8),
-                          Text(context.trOnce('no_customers_khata'),
-                              style: TextStyle(color: Colors.grey[400])),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: customers.length,
-                      itemBuilder: (_, i) {
-                        final c = customers[i];
-                        final isSelected = selected?.id == c.id;
-                        return GestureDetector(
-                          onTap: () =>
-                              setSheet(() => selected = c),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.red[50]
-                                  : Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.red[300]!
-                                    : Colors.grey[200]!,
-                                width: isSelected ? 2 : 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: Colors.red[50],
-                                    shape: BoxShape.circle,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    c.name.isNotEmpty
-                                        ? c.name[0].toUpperCase()
-                                        : '?',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red[400],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(c.name,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14)),
-                                      if (c.phone.isNotEmpty)
-                                        Text(c.phone,
-                                            style: TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.grey[500])),
-                                    ],
-                                  ),
-                                ),
-                                if (c.balance > 0)
-                                  Text(
-                                    'Rs. ${c.balance.toStringAsFixed(0)}',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.red[400],
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                if (isSelected)
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 8),
-                                    child: Icon(Icons.check_circle,
-                                        color: Colors.red[400], size: 20),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                // ── Partial payment field ──────────────────────────────
-                const SizedBox(height: 8),
-                TextField(
-                  controller: paidNowCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: context.trOnce('paid_now_label'),
-                    prefixText: 'Rs. ',
-                    prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onChanged: (v) {
-                    final val = double.tryParse(v.trim()) ?? 0;
-                    setSheet(() => paidNow = val < 0 ? 0 : val);
-                  },
-                ),
-                const SizedBox(height: 8),
-                // ── Udhaar summary row ────────────────────────────────
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: udhaarAmount > 0
-                        ? Colors.red[50]
-                        : Colors.green[50],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Icon(Icons.menu_book_rounded, color: Colors.red[400], size: 22),
+                const SizedBox(width: 10),
+                Text(context.trOnce('save_to_udhaar_title'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              context.trWith('udhaar_sheet_desc',
+                  {'amount': widget.billingState.totalAmount.toStringAsFixed(0)}),
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 12),
+            if (customers.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        context.trOnce('udhaar_amount_row'),
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: udhaarAmount > 0
-                                ? Colors.red[700]
-                                : Colors.green[700]),
-                      ),
-                      Text(
-                        'Rs. ${udhaarAmount.toStringAsFixed(0)}',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: udhaarAmount > 0
-                                ? Colors.red[700]
-                                : Colors.green[700]),
-                      ),
+                      Icon(Icons.person_off, size: 40, color: Colors.grey[300]),
+                      const SizedBox(height: 8),
+                      Text(context.trOnce('no_customers_khata'),
+                          style: TextStyle(color: Colors.grey[400])),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          udhaarAmount > 0 ? Colors.red[400] : Colors.green[600],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
-                    icon: Icon(
-                        udhaarAmount > 0 ? Icons.save_outlined : Icons.check_circle_outline),
-                    label: Text(
-                      selected == null
-                          ? context.trOnce('select_customer_first')
-                          : udhaarAmount <= 0
-                              ? context.trOnce('confirm_fully_paid')
-                              : context.trOnce('save_to_name_khata').replaceAll('{name}', selected!.name),
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: selected == null
-                        ? null
-                        : () {
-                            final chosenCustomer = selected!;
-                            final khataBloc = context.read<KhataBloc>();
-
-                            Navigator.of(ctx).pop();
-
-                            if (udhaarAmount > 0) {
-                              khataBloc.add(AddCreditEntryEvent(
-                                customerId: chosenCustomer.id,
-                                amount: udhaarAmount,
-                                note:
-                                    'Sale — ${billingState.cartItems.map((i) => i.product.name).join(', ')}',
-                              ));
-                            }
-                          },
-                  ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  itemCount: customers.length,
+                  itemBuilder: (_, i) {
+                    final c = customers[i];
+                    final isSelected = _selected?.id == c.id;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selected = c),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.red[50] : Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected
+                                ? Colors.red[300]!
+                                : Colors.grey[200]!,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                  color: Colors.red[50], shape: BoxShape.circle),
+                              alignment: Alignment.center,
+                              child: Text(
+                                c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red[400]),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(c.name,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14)),
+                                  if (c.phone.isNotEmpty)
+                                    Text(c.phone,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[500])),
+                                ],
+                              ),
+                            ),
+                            if (c.balance > 0)
+                              Text(
+                                'Rs. ${c.balance.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red[400],
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            if (isSelected)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: Icon(Icons.check_circle,
+                                    color: Colors.red[400], size: 20),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ],
+              ),
+            // ── Partial payment field ──────────────────────────────────
+            const SizedBox(height: 8),
+            TextField(
+              controller: _paidNowCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: context.trOnce('paid_now_label'),
+                prefixText: 'Rs. ',
+                prefixStyle:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                isDense: true,
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onChanged: (v) {
+                final val = double.tryParse(v.trim()) ?? 0;
+                setState(() => _paidNow = val < 0 ? 0 : val);
+              },
             ),
-          );
-        });
-      },
-    ).whenComplete(() {
-      paidNowCtrl.dispose();
-    });
+            const SizedBox(height: 8),
+            // ── Udhaar summary row ─────────────────────────────────────
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: udhaarAmount > 0 ? Colors.red[50] : Colors.green[50],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    context.trOnce('udhaar_amount_row'),
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: udhaarAmount > 0
+                            ? Colors.red[700]
+                            : Colors.green[700]),
+                  ),
+                  Text(
+                    'Rs. ${udhaarAmount.toStringAsFixed(0)}',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: udhaarAmount > 0
+                            ? Colors.red[700]
+                            : Colors.green[700]),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      udhaarAmount > 0 ? Colors.red[400] : Colors.green[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: Icon(udhaarAmount > 0
+                    ? Icons.save_outlined
+                    : Icons.check_circle_outline),
+                label: Text(
+                  _selected == null
+                      ? context.trOnce('select_customer_first')
+                      : udhaarAmount <= 0
+                          ? context.trOnce('confirm_fully_paid')
+                          : context.trWith(
+                              'save_to_name_khata', {'name': _selected!.name}),
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                onPressed: _selected == null || _submitting
+                    ? null
+                    : () {
+                        setState(() => _submitting = true);
+                        final customerId = _selected!.id;
+                        Navigator.of(context).pop();
+                        if (udhaarAmount > 0) {
+                          widget.onSave(customerId, udhaarAmount);
+                        }
+                      },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

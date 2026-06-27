@@ -18,6 +18,8 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
   final UpdateProductUseCase updateProductUseCase;
   final SaveSaleUseCase saveSaleUseCase;
 
+  static const int _maxCartItems = 50;
+
   BillingBloc({
     required this.getProductByBarcodeUseCase,
     required this.updateProductUseCase,
@@ -41,27 +43,25 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
       (failure) =>
           emit(state.copyWith(error: 'Product not found: ${event.barcode}')),
       (product) {
-        // Clear any sticky error from a previous failed scan BEFORE adding the
-        // product, so the UI doesn't briefly flash an old "Product not found"
-        // snackbar while AddProductToCartEvent is being processed.
         emit(state.copyWith(clearError: true));
         add(AddProductToCartEvent(product));
       },
     );
   }
 
-  /// Handles adding a loose/custom item (no barcode) directly to the cart.
-  /// Creates a temporary [Product] with a MANUAL-prefixed ID so it never
-  /// collides with real products and stock-tracking is skipped (stock == 0).
   void _onAddManualItem(
       AddManualItemEvent event, Emitter<BillingState> emit) {
+    if (state.cartItems.length >= _maxCartItems) {
+      emit(state.copyWith(error: 'Cart is full (max $_maxCartItems items)'));
+      return;
+    }
     final manualId = 'MANUAL-${const Uuid().v4()}';
     final product = Product(
       id: manualId,
       name: event.name.trim(),
       barcode: manualId,
       price: event.price,
-      stock: 0, // 0 = no stock tracking — skips stock guards
+      stock: 0,
     );
     final items = [
       ...state.cartItems,
@@ -80,7 +80,6 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
       final existingItem = cleanState.cartItems[existingIndex];
       final newQuantity = existingItem.quantity + 1;
 
-      // Stock validation: prevent overselling
       if (event.product.stock > 0 && newQuantity > event.product.stock) {
         emit(cleanState.copyWith(
             error:
@@ -92,7 +91,11 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
       items[existingIndex] = existingItem.copyWith(quantity: newQuantity);
       emit(cleanState.copyWith(cartItems: items, error: null));
     } else {
-      // Stock validation: prevent adding out-of-stock items
+      if (cleanState.cartItems.length >= _maxCartItems) {
+        emit(cleanState.copyWith(
+            error: 'Cart is full (max $_maxCartItems items)'));
+        return;
+      }
       if (event.product.stock <= 0) {
         emit(cleanState.copyWith(
             error: '${event.product.name} is out of stock'));
@@ -125,7 +128,6 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     if (index >= 0) {
       final product = state.cartItems[index].product;
 
-      // Stock validation: prevent exceeding available stock
       if (product.stock > 0 && event.quantity > product.stock) {
         emit(state.copyWith(
             error: '${product.name}: only ${product.stock} in stock'));
@@ -147,40 +149,52 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     emit(state.copyWith(isConfirming: true, clearError: true));
 
     try {
-      // Pre-confirm stock validation — re-check current stock levels
+      // Pre-confirm: re-fetch current stock levels for each real product
+      final List<({CartItem cartItem, Product liveProduct})> stockChecked = [];
       for (final cartItem in state.cartItems) {
         final result =
             await getProductByBarcodeUseCase(cartItem.product.barcode);
-        final currentProduct = result.getOrElse((_) => cartItem.product);
-        if (currentProduct.stock > 0 &&
-            cartItem.quantity > currentProduct.stock) {
+        // Manual items (MANUAL- prefix) won't be found — use the cart product itself
+        final liveProduct = result.getOrElse((_) => cartItem.product);
+
+        if (liveProduct.stock > 0 &&
+            cartItem.quantity > liveProduct.stock) {
           emit(state.copyWith(
             isConfirming: false,
             error:
-                '${cartItem.product.name}: only ${currentProduct.stock} left in stock. Please adjust quantity.',
+                '${cartItem.product.name}: only ${liveProduct.stock} left in stock. Please adjust quantity.',
           ));
           return;
         }
+        stockChecked.add((cartItem: cartItem, liveProduct: liveProduct));
       }
 
-      // Deduct stock for each cart item
-      for (final cartItem in state.cartItems) {
+      // Deduct stock using freshly-fetched stock values (fixes TOCTOU gap)
+      for (final entry in stockChecked) {
+        final cartItem = entry.cartItem;
+        final liveProduct = entry.liveProduct;
+
+        // Skip manual items (stock == 0 means no stock tracking)
+        if (liveProduct.stock == 0 &&
+            cartItem.product.id.startsWith('MANUAL-')) {
+          continue;
+        }
+
         final updatedProduct = Product(
-          id: cartItem.product.id,
-          name: cartItem.product.name,
-          barcode: cartItem.product.barcode,
-          price: cartItem.product.price,
-          stock: (cartItem.product.stock - cartItem.quantity).clamp(0, 999999),
+          id: liveProduct.id,
+          name: liveProduct.name,
+          barcode: liveProduct.barcode,
+          price: liveProduct.price,
+          stock: (liveProduct.stock - cartItem.quantity).clamp(0, 999999),
         );
 
-        final updateResult = await updateProductUseCase(updatedProduct);
         var updateFailed = false;
+        final updateResult = await updateProductUseCase(updatedProduct);
         updateResult.fold(
           (failure) {
             emit(state.copyWith(
               isConfirming: false,
-              error:
-                  'Failed to update stock for ${updatedProduct.name}: ${failure.message}',
+              error: 'Failed to update stock for ${updatedProduct.name}',
             ));
             updateFailed = true;
           },
@@ -208,13 +222,13 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
         synced: false,
       );
 
-      final saveResult = await saveSaleUseCase(sale);
       var saveFailed = false;
+      final saveResult = await saveSaleUseCase(sale);
       saveResult.fold(
         (failure) {
           emit(state.copyWith(
             isConfirming: false,
-            error: 'Failed to save sale: ${failure.message}',
+            error: 'Failed to save sale record',
           ));
           saveFailed = true;
         },
@@ -226,7 +240,7 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
       emit(state.copyWith(isConfirming: false, orderConfirmed: true));
     } catch (e) {
       emit(state.copyWith(
-          isConfirming: false, error: 'Failed to confirm order: $e'));
+          isConfirming: false, error: 'Failed to confirm order. Please retry.'));
     }
   }
 
@@ -235,18 +249,18 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
     final printerHelper = PrinterHelper();
 
     if (!printerHelper.isConnected) {
-      final savedMac = HiveDatabase.settingsBox.get('printer_mac');
+      final savedMac =
+          HiveDatabase.settingsBox.get('printer_mac') as String?;
       if (savedMac != null) {
         final connected = await printerHelper.connect(savedMac);
         if (!connected) {
-          emit(state.copyWith(error: 'Failed to auto-connect to printer!'));
-          emit(state.copyWith(clearError: true));
+          // Emit error without immediately clearing — let SnackBar display
+          emit(state.copyWith(error: 'Failed to auto-connect to printer'));
           return;
         }
       } else {
         emit(state.copyWith(
-            error: 'Printer not connected & no saved printer found!'));
-        emit(state.copyWith(clearError: true));
+            error: 'Printer not connected. Go to Settings to pair a printer.'));
         return;
       }
     }
@@ -276,8 +290,7 @@ class BillingBloc extends Bloc<BillingEvent, BillingState> {
 
       emit(state.copyWith(isPrinting: false, printSuccess: true));
     } catch (e) {
-      emit(state.copyWith(isPrinting: false, error: 'Print failed: $e'));
-      emit(state.copyWith(clearError: true));
+      emit(state.copyWith(isPrinting: false, error: 'Print failed. Check printer connection.'));
     }
   }
 }

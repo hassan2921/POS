@@ -11,13 +11,15 @@ class KhataPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<KhataBloc, KhataState>(
+      // Only fire when a new error appears (prev had no error, curr does).
+      // This prevents duplicate snackbars on every state rebuild and avoids
+      // infinite reload loops if the load itself keeps failing.
+      listenWhen: (prev, curr) => prev.error == null && curr.error != null,
       listener: (context, state) {
-        if (state.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.error!),
-            backgroundColor: Colors.red,
-          ));
-        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(state.error!),
+          backgroundColor: Colors.red,
+        ));
       },
       builder: (context, state) {
         return Scaffold(
@@ -178,16 +180,16 @@ class KhataPage extends StatelessWidget {
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16)),
-            title: Text(context.tr('delete_customer')),
+            title: Text(ctx.tr('delete_customer')),
             content: Text(
-                context.trOnce('delete_customer_confirm').replaceAll('{name}', customer.name)),
+                ctx.trWith('delete_customer_confirm', {'name': customer.name})),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(context.tr('cancel'))),
+                  child: Text(ctx.tr('cancel'))),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: Text(context.tr('delete'),
+                child: Text(ctx.tr('delete'),
                     style: const TextStyle(color: Colors.red)),
               ),
             ],
@@ -327,87 +329,105 @@ class KhataPage extends StatelessWidget {
   }
 
   void _showAddCustomerDialog(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(children: [
-          Icon(Icons.person_add,
-              color: Theme.of(context).primaryColor, size: 22),
-          const SizedBox(width: 10),
-          Text(context.tr('new_customer'),
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-        ]),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameCtrl,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: context.tr('customer_name'),
-                  hintText: context.tr('customer_name_hint'),
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? context.trOnce('customer_name_required')
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: context.tr('phone_label'),
-                  hintText: context.tr('phone_hint'),
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? context.trOnce('phone_required')
-                    : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(context.tr('cancel'),
-                  style: TextStyle(color: Colors.grey[500]))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                context.read<KhataBloc>().add(AddCustomerEvent(
-                      name: nameCtrl.text.trim(),
-                      phone: phoneCtrl.text.trim(),
-                    ));
-                Navigator.pop(ctx);
-              }
-            },
-            child: Text(context.tr('add')),
-          ),
-        ],
+      builder: (ctx) => _AddCustomerDialog(
+        onAdd: (name, phone) =>
+            context.read<KhataBloc>().add(AddCustomerEvent(name: name, phone: phone)),
       ),
-    ).whenComplete(() {
-      nameCtrl.dispose();
-      phoneCtrl.dispose();
-    });
+    );
+  }
+}
+
+// ── Add-customer dialog ────────────────────────────────────────────────────────
+// Owns its controllers so they are disposed with the dialog widget tree (after
+// the close animation), not by a whenComplete callback that runs before it.
+class _AddCustomerDialog extends StatefulWidget {
+  final void Function(String name, String phone) onAdd;
+  const _AddCustomerDialog({required this.onAdd});
+  @override
+  State<_AddCustomerDialog> createState() => _AddCustomerDialogState();
+}
+
+class _AddCustomerDialogState extends State<_AddCustomerDialog> {
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(children: [
+        Icon(Icons.person_add, color: Theme.of(context).primaryColor, size: 22),
+        const SizedBox(width: 10),
+        Text(context.tr('new_customer'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+      ]),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameCtrl,
+              textCapitalization: TextCapitalization.words,
+              maxLength: 60,
+              decoration: InputDecoration(
+                labelText: context.tr('customer_name'),
+                hintText: context.tr('customer_name_hint'),
+                prefixIcon: const Icon(Icons.person_outline),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? context.trOnce('customer_name_required')
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _phoneCtrl,
+              keyboardType: TextInputType.phone,
+              maxLength: 15,
+              decoration: InputDecoration(
+                labelText: context.tr('phone_label'),
+                hintText: context.tr('phone_hint'),
+                prefixIcon: const Icon(Icons.phone_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? context.trOnce('phone_required')
+                  : null,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.tr('cancel'),
+                style: TextStyle(color: Colors.grey[500]))),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).primaryColor,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              widget.onAdd(_nameCtrl.text.trim(), _phoneCtrl.text.trim());
+              Navigator.pop(context);
+            }
+          },
+          child: Text(context.tr('add')),
+        ),
+      ],
+    );
   }
 }

@@ -32,31 +32,25 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     final salesResult = await getAllSalesUseCase(NoParams());
     final productsResult = await getProductsUseCase(NoParams());
 
-    late List<Sale> sales;
-    late List<Product> products;
+    List<Sale>? sales;
+    List<Product>? products;
 
     salesResult.fold(
-      (failure) {
-        emit(state.copyWith(
-            status: DashboardStatus.error, error: failure.message));
-        return;
-      },
+      (failure) => emit(state.copyWith(
+          status: DashboardStatus.error, error: failure.message)),
       (data) => sales = data,
     );
 
     productsResult.fold(
-      (failure) {
-        emit(state.copyWith(
-            status: DashboardStatus.error, error: failure.message));
-        return;
-      },
+      (failure) => emit(state.copyWith(
+          status: DashboardStatus.error, error: failure.message)),
       (data) => products = data,
     );
 
-    if (state.status == DashboardStatus.error) return;
+    if (sales == null || products == null) return;
 
-    _allSales = sales;
-    _allProducts = products;
+    _allSales = sales!;
+    _allProducts = products!;
     _cacheValid = true;
 
     _emitComputedState(emit, state.period);
@@ -76,15 +70,19 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       final salesResult = await getAllSalesUseCase(NoParams());
       final productsResult = await getProductsUseCase(NoParams());
 
+      List<Sale>? sales;
+      List<Product>? products;
       salesResult.fold(
         (f) => emit(state.copyWith(status: DashboardStatus.error, error: f.message)),
-        (d) => _allSales = d,
+        (d) => sales = d,
       );
       productsResult.fold(
         (f) => emit(state.copyWith(status: DashboardStatus.error, error: f.message)),
-        (d) => _allProducts = d,
+        (d) => products = d,
       );
-      if (state.status == DashboardStatus.error) return;
+      if (sales == null || products == null) return;
+      _allSales = sales!;
+      _allProducts = products!;
       _cacheValid = true;
     }
 

@@ -543,5 +543,16 @@ extension TranslateExtension on BuildContext {
   String trOnce(String key) =>
       AppLocalizations.translate(this, key, listen: false);
 
+  /// Substitutes named placeholders in a single regex pass so user-supplied
+  /// values cannot trigger secondary substitutions. Example:
+  ///   context.trWith('delete_customer_confirm', {'name': customer.name})
+  String trWith(String key, Map<String, String> params) {
+    final text = AppLocalizations.translate(this, key, listen: false);
+    return text.replaceAllMapped(
+      RegExp(r'\{(\w+)\}'),
+      (m) => params[m.group(1)] ?? m.group(0)!,
+    );
+  }
+
   bool get isUrdu => watch<LanguageCubit>().state == AppLanguage.urdu;
 }

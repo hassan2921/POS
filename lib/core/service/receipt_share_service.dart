@@ -30,6 +30,7 @@ class ReceiptShareService {
       [XFile(file.path)],
       text: filename,
     );
+    try { await file.delete(); } catch (_) {}
   }
 
   /// Sends the receipt as a WhatsApp text message.
@@ -38,7 +39,7 @@ class ReceiptShareService {
     required String phone,
     required String message,
   }) async {
-    final sanitizedPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final sanitizedPhone = phone.replaceAll(RegExp(r'\D'), '');
     final encoded = Uri.encodeComponent(message);
     final appUrl =
         Uri.parse('whatsapp://send?phone=$sanitizedPhone&text=$encoded');
