@@ -11,6 +11,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_localizations.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../domain/entities/cart_item.dart';
+import '../../../product/presentation/bloc/product_bloc.dart';
+import '../../../product/domain/entities/product.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -639,14 +641,17 @@ class _HomePageState extends State<HomePage> {
   // ── Manual Item Sheet ─────────────────────────────────────────────────────
 
   void _showManualItemSheet(BuildContext context) {
+    final products = context.read<ProductBloc>().state.products;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _ManualItemSheet(
-        onAdd: (name, price, qty) {
+        products: products,
+        onAdd: (name, price, qty, isWeight, weight, unit) {
+          final displayName = isWeight ? '$name ($weight $unit)' : name;
           context.read<BillingBloc>().add(AddManualItemEvent(
-                name: name,
+                name: displayName,
                 price: price,
                 quantity: qty,
               ));
@@ -712,8 +717,9 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _ManualItemSheet extends StatefulWidget {
-  final void Function(String name, double price, int qty) onAdd;
-  const _ManualItemSheet({required this.onAdd});
+  final List<Product> products;
+  final void Function(String name, double price, int qty, bool isWeight, double weight, String unit) onAdd;
+  const _ManualItemSheet({required this.products, required this.onAdd});
 
   @override
   State<_ManualItemSheet> createState() => _ManualItemSheetState();
@@ -722,14 +728,61 @@ class _ManualItemSheet extends StatefulWidget {
 class _ManualItemSheetState extends State<_ManualItemSheet> {
   final _nameCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
+  final _weightCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   int _qty = 1;
+  bool _isWeightBased = false;
+  String _weightUnit = 'kg'; // 'kg' or 'g'
+  double _calculatedPrice = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl.addListener(_onNameChanged);
+    _priceCtrl.addListener(_updateCalculatedPrice);
+    _weightCtrl.addListener(_updateCalculatedPrice);
+  }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _priceCtrl.dispose();
+    _weightCtrl.dispose();
     super.dispose();
+  }
+
+  void _onNameChanged() {
+    final typed = _nameCtrl.text.trim().toLowerCase();
+    if (typed.isEmpty) return;
+
+    final match = widget.products.where((p) => p.name.toLowerCase() == typed).firstOrNull ??
+                  widget.products.where((p) => p.name.toLowerCase().startsWith(typed)).firstOrNull;
+
+    if (match != null) {
+      if (_priceCtrl.text.isEmpty) {
+        _priceCtrl.text = match.price.toStringAsFixed(2);
+      }
+      if (match.unit == 'kg' && !_isWeightBased) {
+        setState(() {
+          _isWeightBased = true;
+        });
+      }
+    }
+  }
+
+  void _updateCalculatedPrice() {
+    if (!_isWeightBased) return;
+    final priceVal = double.tryParse(_priceCtrl.text.trim()) ?? 0.0;
+    final weightVal = double.tryParse(_weightCtrl.text.trim()) ?? 0.0;
+
+    double weightInKg = weightVal;
+    if (_weightUnit == 'g') {
+      weightInKg = weightVal / 1000.0;
+    }
+
+    setState(() {
+      _calculatedPrice = priceVal * weightInKg;
+    });
   }
 
   @override
@@ -797,7 +850,9 @@ class _ManualItemSheetState extends State<_ManualItemSheet> {
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
-                  labelText: context.tr('price_label'),
+                  labelText: _isWeightBased
+                      ? (context.isUrdu ? 'قیمت فی کلو' : 'Price per KG')
+                      : context.tr('price_label'),
                   hintText: '0.00',
                   prefixText: 'Rs. ',
                   prefixStyle: const TextStyle(
@@ -817,41 +872,137 @@ class _ManualItemSheetState extends State<_ManualItemSheet> {
                 },
               ),
               const SizedBox(height: 14),
-              Row(
-                children: [
-                  Text(context.tr('quantity'),
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600)),
-                  const Spacer(),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove, size: 20),
-                          onPressed: _qty > 1
-                              ? () => setState(() => _qty--)
-                              : null,
-                        ),
-                        SizedBox(
-                          width: 36,
-                          child: Text('$_qty',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add, size: 20),
-                          onPressed: () => setState(() => _qty++),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+
+              // ── Weight toggle ──────────────────────────────────────────
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                activeColor: Theme.of(context).primaryColor,
+                title: Text(
+                  context.isUrdu ? 'کیا یہ کلو میں ہے؟' : 'Is sold in kg?',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                value: _isWeightBased,
+                onChanged: (val) {
+                  setState(() {
+                    _isWeightBased = val;
+                    if (val) {
+                      _qty = 1;
+                      _updateCalculatedPrice();
+                    }
+                  });
+                },
               ),
+
+              if (_isWeightBased) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: TextFormField(
+                        controller: _weightCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: context.isUrdu ? 'وزن' : 'Weight',
+                          hintText: '0.00',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (v) {
+                          if (!_isWeightBased) return null;
+                          if (v == null || v.trim().isEmpty) {
+                            return context.isUrdu ? 'وزن درج کریں' : 'Enter weight';
+                          }
+                          final w = double.tryParse(v.trim());
+                          if (w == null || w <= 0) {
+                            return context.isUrdu ? 'درست وزن درج کریں' : 'Enter valid weight';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<String>(
+                        value: _weightUnit,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'kg', child: Text('kg')),
+                          DropdownMenuItem(value: 'g', child: Text('g (grams)')),
+                        ],
+                        onChanged: (val) {
+                          setState(() {
+                            _weightUnit = val ?? 'kg';
+                            _updateCalculatedPrice();
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // ── Real-time calculated price display ────────────────────────
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Theme.of(context).primaryColor.withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        context.isUrdu ? 'حساب شدہ قیمت:' : 'Calculated Price:',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                      ),
+                      Text(
+                        'Rs. ${_calculatedPrice.toStringAsFixed(2)}',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    Text(context.tr('quantity'),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove, size: 20),
+                            onPressed: _qty > 1
+                                ? () => setState(() => _qty--)
+                                : null,
+                          ),
+                          SizedBox(
+                            width: 36,
+                            child: Text('$_qty',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add, size: 20),
+                            onPressed: () => setState(() => _qty++),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -869,11 +1020,25 @@ class _ManualItemSheetState extends State<_ManualItemSheet> {
                           fontSize: 15, fontWeight: FontWeight.bold)),
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      widget.onAdd(
-                        _nameCtrl.text.trim(),
-                        double.parse(_priceCtrl.text.trim()),
-                        _qty,
-                      );
+                      if (_isWeightBased) {
+                        widget.onAdd(
+                          _nameCtrl.text.trim(),
+                          _calculatedPrice,
+                          1,
+                          true,
+                          double.parse(_weightCtrl.text.trim()),
+                          _weightUnit,
+                        );
+                      } else {
+                        widget.onAdd(
+                          _nameCtrl.text.trim(),
+                          double.parse(_priceCtrl.text.trim()),
+                          _qty,
+                          false,
+                          0.0,
+                          '',
+                        );
+                      }
                       Navigator.of(context).pop();
                     }
                   },
