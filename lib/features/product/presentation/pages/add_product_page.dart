@@ -46,35 +46,126 @@ class _AddProductPageState extends State<AddProductPage> {
     }
   }
 
-  void _submit() {
+  void _submit() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      final productState = context.read<ProductBloc>().state;
-      final existingProduct =
-          productState.products.where((p) => p.barcode == _barcode).firstOrNull;
+      String targetBarcode = _barcode.trim();
 
-      if (existingProduct != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text(context.trWith('barcode_exists', {'barcode': _barcode})),
-            backgroundColor: Colors.red,
+      // 1. If barcode is empty, ask if they want to generate a unique code
+      if (targetBarcode.isEmpty) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.qr_code, color: AppTheme.primaryColor),
+                const SizedBox(width: 8),
+                Text(
+                  ctx.isUrdu ? 'بارکوڈ نہیں ہے' : 'No Barcode',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: Text(
+              ctx.isUrdu
+                  ? 'اس پروڈکٹ کا بارکوڈ نہیں ہے۔ کیا آپ اس کے لیے ایک مخصوص کوڈ بنانا چاہتے ہیں؟'
+                  : 'This product does not have a barcode. Do you want to generate a unique code for it?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(ctx.isUrdu ? 'نہیں' : 'No'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(ctx.isUrdu ? 'جی ہاں' : 'Yes'),
+              ),
+            ],
           ),
         );
-        return;
+
+        if (proceed == null) return; // user dismissed dialog
+
+        targetBarcode = 'NOBAR-${const Uuid().v4().substring(0, 8).toUpperCase()}';
       }
+
+      // Check if code exists (only if it wasn't auto-generated)
+      if (!targetBarcode.startsWith('NOBAR-')) {
+        final productState = context.read<ProductBloc>().state;
+        final existingProduct = productState.products
+            .where((p) => p.barcode == targetBarcode)
+            .firstOrNull;
+
+        if (existingProduct != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.trWith('barcode_exists', {'barcode': targetBarcode})),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      // 2. Ask "Is this item sold in kg?"
+      final soldInKg = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.scale, color: AppTheme.primaryColor),
+              const SizedBox(width: 8),
+              Text(
+                ctx.isUrdu ? 'کلوگرام میں فروخت' : 'Sold in KG',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Text(
+            ctx.isUrdu
+                ? 'کیا یہ پروڈکٹ کلو (KG) میں فروخت ہوتی ہے؟'
+                : 'Is this item sold in kg?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(ctx.isUrdu ? 'نہیں' : 'No'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(ctx.isUrdu ? 'جی ہاں' : 'Yes'),
+            ),
+          ],
+        ),
+      );
+
+      if (soldInKg == null) return; // user dismissed dialog
+
+      final finalUnit = soldInKg ? 'kg' : _unit;
 
       final product = Product(
         id: const Uuid().v4(),
         name: _name,
-        barcode: _barcode,
+        barcode: targetBarcode,
         price: _price,
         stock: _stock,
-        unit: _unit,
+        unit: finalUnit,
       );
 
-      context.read<ProductBloc>().add(AddProduct(product));
+      if (mounted) {
+        context.read<ProductBloc>().add(AddProduct(product));
+      }
     }
   }
 
@@ -471,9 +562,8 @@ class _AddProductPageState extends State<AddProductPage> {
                           decoration: InputDecoration(
                             hintText: context.tr('scan_or_enter_barcode'),
                           ),
-                          validator: AppValidators.required(
-                              context.trOnce('barcode_required')),
-                          onSaved: (value) => _barcode = value!,
+                          validator: (value) => null,
+                          onSaved: (value) => _barcode = value ?? '',
                         ),
                       ),
                       const SizedBox(width: 12),
