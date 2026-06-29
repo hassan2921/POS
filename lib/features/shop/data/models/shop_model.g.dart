@@ -21,7 +21,6 @@ class ShopModelAdapter extends TypeAdapter<ShopModel> {
       addressLine1: fields[1] as String,
       addressLine2: fields[2] as String,
       phoneNumber: fields[3] as String,
-      upiId: fields[4] as String,
       footerText: fields[5] as String,
       jazzCashNumber: fields[6] as String? ?? '',
       easypaisaNumber: fields[7] as String? ?? '',
@@ -36,7 +35,7 @@ class ShopModelAdapter extends TypeAdapter<ShopModel> {
   @override
   void write(BinaryWriter writer, ShopModel obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -45,8 +44,6 @@ class ShopModelAdapter extends TypeAdapter<ShopModel> {
       ..write(obj.addressLine2)
       ..writeByte(3)
       ..write(obj.phoneNumber)
-      ..writeByte(4)
-      ..write(obj.upiId)
       ..writeByte(5)
       ..write(obj.footerText)
       ..writeByte(6)

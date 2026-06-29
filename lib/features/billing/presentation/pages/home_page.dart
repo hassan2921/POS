@@ -7,10 +7,14 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../billing/presentation/bloc/billing_bloc.dart';
 import '../../../../core/service/beep_service.dart';
+import '../../../../core/service_locator.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/usecase/usecase.dart';
 import '../../../../core/utils/app_localizations.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../domain/entities/cart_item.dart';
+import '../../../product/domain/entities/product.dart';
+import '../../../product/domain/usecases/product_usecases.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -651,6 +655,9 @@ class _HomePageState extends State<HomePage> {
                 quantity: qty,
               ));
         },
+        onAddProduct: (product) {
+          context.read<BillingBloc>().add(AddProductToCartEvent(product));
+        },
       ),
     );
   }
@@ -713,7 +720,8 @@ class _HomePageState extends State<HomePage> {
 
 class _ManualItemSheet extends StatefulWidget {
   final void Function(String name, double price, int qty) onAdd;
-  const _ManualItemSheet({required this.onAdd});
+  final void Function(Product product) onAddProduct;
+  const _ManualItemSheet({required this.onAdd, required this.onAddProduct});
 
   @override
   State<_ManualItemSheet> createState() => _ManualItemSheetState();
@@ -722,164 +730,408 @@ class _ManualItemSheet extends StatefulWidget {
 class _ManualItemSheetState extends State<_ManualItemSheet> {
   final _nameCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
+  final _searchCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   int _qty = 1;
+
+  List<Product> _allProducts = [];
+  List<Product> _searchResults = [];
+  bool _loadingProducts = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl.addListener(_onSearchChanged);
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    final result = await sl<GetProductsUseCase>()(NoParams());
+    if (!mounted) return;
+    result.fold(
+      (_) => setState(() => _loadingProducts = false),
+      (products) => setState(() {
+        _allProducts = products;
+        _loadingProducts = false;
+      }),
+    );
+  }
+
+  void _onSearchChanged() {
+    final query = _searchCtrl.text.trim().toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _searchResults = [];
+      } else {
+        _searchResults = _allProducts
+            .where((p) =>
+                p.name.toLowerCase().contains(query) ||
+                p.barcode.toLowerCase().contains(query))
+            .take(6)
+            .toList();
+      }
+    });
+  }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _priceCtrl.dispose();
+    _searchCtrl.removeListener(_onSearchChanged);
+    _searchCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    child: Icon(Icons.edit_note_rounded,
-                        color: Theme.of(context).primaryColor, size: 22),
                   ),
-                  const SizedBox(width: 12),
-                  Text(context.tr('add_item_manually'),
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _nameCtrl,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: context.tr('item_name'),
-                  hintText: context.tr('item_name_hint'),
-                  prefixIcon: const Icon(Icons.label_outline),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? context.trOnce('item_name_required')
-                    : null,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _priceCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: context.tr('price_label'),
-                  hintText: '0.00',
-                  prefixText: 'Rs. ',
-                  prefixStyle: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w500),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                // Title
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.edit_note_rounded,
+                          color: Theme.of(context).primaryColor, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(context.tr('add_item_manually'),
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                  ],
                 ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return context.trOnce('enter_price');
-                  }
-                  final p = double.tryParse(v.trim());
-                  if (p == null || p <= 0) {
-                    return context.trOnce('enter_valid_price');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Text(context.tr('quantity'),
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600)),
-                  const Spacer(),
+                const SizedBox(height: 20),
+
+                // ── Search existing products ──────────────────────────────
+                Text(
+                  context.isUrdu ? 'موجودہ پروڈکٹ تلاش کریں' : 'Search Existing Product',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _searchCtrl,
+                  decoration: InputDecoration(
+                    hintText: context.isUrdu
+                        ? 'بارکوڈ یا نام لکھیں...'
+                        : 'Search by barcode or name...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () => _searchCtrl.clear(),
+                          )
+                        : _loadingProducts
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              )
+                            : null,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 14),
+                  ),
+                ),
+                if (_searchResults.isNotEmpty) ...[
+                  const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey[200]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: _searchResults.map((product) {
+                        final isLast = product == _searchResults.last;
+                        return Column(
+                          children: [
+                            InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () {
+                                widget.onAddProduct(product);
+                                Navigator.of(context).pop();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .primaryColor
+                                            .withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(Icons.inventory_2_outlined,
+                                          size: 18,
+                                          color: Theme.of(context).primaryColor),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            product.name,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            product.barcode,
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[500]),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'Rs. ${product.price.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              color: Theme.of(context)
+                                                  .primaryColor),
+                                        ),
+                                        if (product.stock > 0)
+                                          Text(
+                                            '${product.stock} ${context.isUrdu ? 'باقی' : 'left'}',
+                                            style: TextStyle(
+                                                fontSize: 10,
+                                                color: product.stock <= 5
+                                                    ? Colors.orange
+                                                    : Colors.grey[400]),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Icon(Icons.add_circle_outline,
+                                        color: Theme.of(context).primaryColor,
+                                        size: 22),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (!isLast)
+                              Divider(
+                                  height: 1,
+                                  indent: 14,
+                                  endIndent: 14,
+                                  color: Colors.grey[200]),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ] else if (_searchCtrl.text.trim().isNotEmpty &&
+                    !_loadingProducts) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[200]!),
                     ),
                     child: Row(
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove, size: 20),
-                          onPressed: _qty > 1
-                              ? () => setState(() => _qty--)
-                              : null,
-                        ),
-                        SizedBox(
-                          width: 36,
-                          child: Text('$_qty',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add, size: 20),
-                          onPressed: () => setState(() => _qty++),
+                        Icon(Icons.search_off, color: Colors.grey[400], size: 20),
+                        const SizedBox(width: 10),
+                        Text(
+                          context.isUrdu
+                              ? 'کوئی پروڈکٹ نہیں ملی'
+                              : 'No products found',
+                          style: TextStyle(color: Colors.grey[500], fontSize: 13),
                         ),
                       ],
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+
+                // ── OR divider ────────────────────────────────────────────
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: Colors.grey[300])),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        context.isUrdu ? 'یا' : 'OR',
+                        style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: Colors.grey[300])),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // ── Manual entry ──────────────────────────────────────────
+                Text(
+                  context.isUrdu ? 'دستی آئٹم شامل کریں' : 'Add Custom Item',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _nameCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: context.tr('item_name'),
+                    hintText: context.tr('item_name_hint'),
+                    prefixIcon: const Icon(Icons.label_outline),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  icon: const Icon(Icons.add_shopping_cart),
-                  label: Text(context.tr('add_to_cart'),
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold)),
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      widget.onAdd(
-                        _nameCtrl.text.trim(),
-                        double.parse(_priceCtrl.text.trim()),
-                        _qty,
-                      );
-                      Navigator.of(context).pop();
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? context.trOnce('item_name_required')
+                      : null,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _priceCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: context.tr('price_label'),
+                    hintText: '0.00',
+                    prefixText: 'Rs. ',
+                    prefixStyle: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w500),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return context.trOnce('enter_price');
                     }
+                    final p = double.tryParse(v.trim());
+                    if (p == null || p <= 0) {
+                      return context.trOnce('enter_valid_price');
+                    }
+                    return null;
                   },
                 ),
-              ),
-            ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Text(context.tr('quantity'),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove, size: 20),
+                            onPressed:
+                                _qty > 1 ? () => setState(() => _qty--) : null,
+                          ),
+                          SizedBox(
+                            width: 36,
+                            child: Text('$_qty',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add, size: 20),
+                            onPressed: () => setState(() => _qty++),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.add_shopping_cart),
+                    label: Text(context.tr('add_to_cart'),
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                      if (_formKey.currentState!.validate()) {
+                        widget.onAdd(
+                          _nameCtrl.text.trim(),
+                          double.parse(_priceCtrl.text.trim()),
+                          _qty,
+                        );
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

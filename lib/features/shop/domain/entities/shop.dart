@@ -16,9 +16,6 @@ class Shop extends Equatable {
   final String bankAccountNumber; // e.g. 01234567890123
   final String bankIban;          // e.g. PK36HABB0000001234567890
 
-  // Legacy UPI (kept for backwards compat, ignored in UI)
-  final String upiId;
-
   const Shop({
     this.name = '',
     this.addressLine1 = '',
@@ -32,7 +29,7 @@ class Shop extends Equatable {
     this.bankAccountTitle = '',
     this.bankAccountNumber = '',
     this.bankIban = '',
-    this.upiId = '',
+    
   });
 
   Shop copyWith({
@@ -48,7 +45,7 @@ class Shop extends Equatable {
     String? bankAccountTitle,
     String? bankAccountNumber,
     String? bankIban,
-    String? upiId,
+    
   }) {
     return Shop(
       name: name ?? this.name,
@@ -63,7 +60,7 @@ class Shop extends Equatable {
       bankAccountTitle: bankAccountTitle ?? this.bankAccountTitle,
       bankAccountNumber: bankAccountNumber ?? this.bankAccountNumber,
       bankIban: bankIban ?? this.bankIban,
-      upiId: upiId ?? this.upiId,
+      
     );
   }
 
@@ -71,6 +68,6 @@ class Shop extends Equatable {
   List<Object?> get props => [
         name, addressLine1, addressLine2, phoneNumber, footerText,
         jazzCashNumber, easypaisaNumber, nayapayNumber,
-        bankName, bankAccountTitle, bankAccountNumber, bankIban, upiId,
+        bankName, bankAccountTitle, bankAccountNumber, bankIban, 
       ];
 }
