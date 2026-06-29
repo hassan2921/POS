@@ -52,12 +52,14 @@ Future<void> init() async {
     () => ProductBloc(
       getProductsUseCase: sl(),
       addProductUseCase: sl(),
+      bulkAddProductsUseCase: sl(),
       updateProductUseCase: sl(),
       deleteProductUseCase: sl(),
     ),
   );
   sl.registerLazySingleton(() => GetProductsUseCase(sl()));
   sl.registerLazySingleton(() => AddProductUseCase(sl()));
+  sl.registerLazySingleton(() => BulkAddProductsUseCase(sl()));
   sl.registerLazySingleton(() => UpdateProductUseCase(sl()));
   sl.registerLazySingleton(() => DeleteProductUseCase(sl()));
   sl.registerLazySingleton(() => GetProductByBarcodeUseCase(sl()));

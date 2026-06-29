@@ -48,6 +48,17 @@ class DeleteProductUseCase implements UseCase<void, String> {
   }
 }
 
+class BulkAddProductsUseCase implements UseCase<void, List<Product>> {
+  final ProductRepository repository;
+
+  BulkAddProductsUseCase(this.repository);
+
+  @override
+  Future<Either<Failure, void>> call(List<Product> params) {
+    return repository.bulkAddProducts(params);
+  }
+}
+
 class GetProductByBarcodeUseCase implements UseCase<Product, String> {
   final ProductRepository repository;
 

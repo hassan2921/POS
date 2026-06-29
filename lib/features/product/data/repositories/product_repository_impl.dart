@@ -42,6 +42,19 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
+  Future<Either<Failure, void>> bulkAddProducts(List<Product> products) async {
+    try {
+      final entries = {
+        for (final p in products) p.id: ProductModel.fromEntity(p),
+      };
+      await HiveDatabase.productBox.putAll(entries);
+      return const Right(null);
+    } catch (_) {
+      return const Left(CacheFailure('Failed to bulk add products'));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> updateProduct(Product product) async {
     try {
       await HiveDatabase.productBox

@@ -323,9 +323,9 @@ class _AddProductPageState extends State<AddProductPage> {
       final existingProducts = context.read<ProductBloc>().state.products;
       final existingBarcodes = existingProducts.map((p) => p.barcode).toSet();
 
-      int imported = 0;
       int skipped = 0;
       int errors = 0;
+      final toImport = <Product>[];
 
       for (final row in dataRows) {
         if (row.length < 4) {
@@ -353,21 +353,24 @@ class _AddProductPageState extends State<AddProductPage> {
             continue;
           }
 
-          final product = Product(
+          toImport.add(Product(
             id: const Uuid().v4(),
             name: name,
             barcode: barcode,
             price: price,
             stock: stock,
             unit: unit,
-          );
-
-          context.read<ProductBloc>().add(AddProduct(product));
+          ));
           existingBarcodes.add(barcode);
-          imported++;
         } catch (_) {
           errors++;
         }
+      }
+
+      final imported = toImport.length;
+
+      if (toImport.isNotEmpty && mounted) {
+        context.read<ProductBloc>().add(BulkAddProducts(toImport));
       }
 
       final parts = <String>[];
